@@ -92,7 +92,7 @@
               {% endif %}
             </td>
         <td style="text-align:right;white-space:nowrap;">
-          <button onclick="openEditModal({{ u.id }},'{{ u.name|replace("'","\\'") }}','{{ u.email }}','{{ u.role }}',{{ 'true' if u.is_active else 'false' }},{{ u.klient_id or 'null' }},'{{ u.freelo_email or "" }}',{{ 'true' if u.freelo_api_key else 'false' }})"
+          <button onclick="openEditModal({{ u.id }},'{{ u.name|replace("'","\\'") }}','{{ u.email }}','{{ u.role }}',{{ 'true' if u.is_active else 'false' }},{{ u.klient_id or 'null' }})"
             class="btn btn-secondary btn-sm">Upravit</button>
           {% if u.id != session.user_id and u.role != 'superadmin' %}
           <form method="POST" action="{{ url_for('admin_bp.smazat_uzivatele', user_id=u.id) }}" style="display:inline;"

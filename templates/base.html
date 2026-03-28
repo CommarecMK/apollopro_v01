@@ -166,13 +166,11 @@ hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
   </a>
   <div class="nav-divider"></div>
   <div class="nav-links">
-    <a href="{{ url_for('main.prehled') }}" class="nav-link {% if request.endpoint in ['prehled','klient_detail','klient_vyvoj','klient_novy','klient_upravit','projekt_detail','klienti_list'] %}active{% endif %}">Přehled</a>
-    <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint in ['dashboard','home'] %}active{% endif %}">Zápisy</a>
+    <a href="{{ url_for('main.prehled') }}" class="nav-link {% if request.endpoint in ['prehled','home','dashboard','crm_prehled','klient_detail','klient_vyvoj','klient_novy','klient_upravit','projekt_detail','klienti_list'] %}active{% endif %}">Přehled</a>
     <a href="{{ url_for('zapisy.novy_zapis') }}" class="nav-link {% if request.endpoint == 'novy_zapis' %}active{% endif %}" style="background:#00AFF0; color:#0E213E; padding:6px 16px; border-radius:4px; font-family:'Montserrat',sans-serif; font-weight:800; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; white-space:nowrap;">+ Nový zápis</a>
     {% if session.is_admin %}
     <a href="{{ url_for('report.report_mesicni') }}" class="nav-link {% if request.endpoint in ['report_mesicni','progress_report'] %}active{% endif %}">AI Report</a>
     <a href="{{ url_for('admin_bp.admin') }}" class="nav-link {% if request.endpoint in ['admin','admin_templates'] %}active{% endif %}">Správa</a>
-    <a href="{{ url_for('main.manual') }}" class="nav-link {% if request.endpoint == 'manual' %}active{% endif %}">Manuál</a>
     {% endif %}
   </div>
   <div class="nav-right">

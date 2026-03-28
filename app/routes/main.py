@@ -107,7 +107,7 @@ def login():
             session["user_name"] = user.name
             session["is_admin"]  = user.is_admin
             session["user_role"] = user.role
-            return redirect(url_for("main.prehled"))
+            return redirect(url_for("main.dashboard"))
         error = "Nespravny e-mail nebo heslo."
     return render_template("login.html", error=error)
 
@@ -531,15 +531,4 @@ def crm_prehled():
     """Přesměrování na /prehled — CRM je sloučeno s přehledem."""
     from flask import redirect, url_for
     return redirect(url_for("main.prehled"))
-
-
-# ─────────────────────────────────────────────
-# MANUÁL PRO TÝM
-# ─────────────────────────────────────────────
-
-@bp.route("/manual")
-@login_required
-def manual():
-    """Manuál pro tým — návod k použití aplikace."""
-    return render_template("manual.html")
 
