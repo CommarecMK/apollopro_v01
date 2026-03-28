@@ -17,24 +17,6 @@ bp = Blueprint("admin_bp", __name__)
 @bp.route("/admin")
 @admin_required
 def admin():
-    # Migrace MUSÍ proběhnout před jakýmkoliv dotazem na user tabulku
-    try:
-        from ..extensions import db as _db
-        with _db.engine.connect() as conn:
-            for sql in [
-                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS freelo_email VARCHAR(120)',
-                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS freelo_api_key VARCHAR(200)',
-            ]:
-                try:
-                    conn.execute(_db.text(sql))
-                    conn.commit()
-                except Exception:
-                    try: conn.rollback()
-                    except: pass
-        # Invaliduj SQLAlchemy cache schématu aby viděl nové sloupce
-        _db.engine.dispose()
-    except Exception:
-        pass
     users   = User.query.order_by(User.name).all()
     klienti = Klient.query.order_by(Klient.nazev).all()
     flash   = session.pop("admin_flash", None)
