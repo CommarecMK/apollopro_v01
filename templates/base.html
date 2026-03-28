@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Zápisy{% endblock %} — Commarec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  /* === COMMAREC BRAND COLORS === */
+  /* Navy palette */
+  --navy:       #173767;   /* primary navy #173767 RGB 23/55/103 */
+  --navy-dark:  #0E213E;   /* dark navy #0E213E RGB 14/33/62 */
+  --navy-black: #050B15;   /* near-black #050B15 RGB 5/11/21 */
+  --navy-mid:   #254f8a;   /* mid navy for hover states */
+  /* Cyan palette */
+  --cyan:       #00AFF0;   /* primary cyan #00AFF0 RGB 0/175/240 */
+  --cyan-dark:  #008ABD;   /* secondary cyan #008ABD RGB 0/138/189 */
+  --cyan-bg:    #E0F5FD;   /* light cyan background */
+  /* UI colors */
+  --white:      #FFFFFF;
+  --bg:         #F0F3F7;
+  --surface:    #FFFFFF;
+  --border:     #D0DAE8;
+  --text:       #0E213E;
+  --muted:      #4A6080;
+  --success:    #0A7A5A;
+  --success-bg: #E2F5EE;
+  --danger:     #C0392B;
+  --danger-bg:  #FCEAEA;
+  --radius:     6px;
+  --font-display: 'Montserrat', sans-serif;
+  --font-body:    'Montserrat', sans-serif;
+}
+body { font-family: var(--font-body); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; min-height: 100vh; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* NAV */
+.nav {
+  background: #173767;
+  border-bottom: 3px solid #00AFF0;
+  padding: 0 2rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-logo-svg { display: block; }
+.nav-logo-name {
+  font-family: var(--font-body);
+  font-size: 15px; font-weight: 800;
+  color: white; letter-spacing: 0.08em;
+  line-height: 1; text-transform: uppercase;
+}
+.nav-logo-name span {
+  color: var(--cyan);
+  font-family: var(--font-body);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  display: block; margin-top: -2px;
+}
+.nav-divider { width: 1px; height: 24px; background: rgba(255,255,255,0.15); margin: 0 4px; }
+.nav-links { display: flex; gap: 2px; align-items: center; }
+.nav-link { font-size: 10px; font-weight: 600; font-family: 'Montserrat', sans-serif; color: rgba(255,255,255,0.5); padding: 6px 13px; border-radius: 4px; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.1em; position: relative; }
+.nav-link:hover { color: white; background: rgba(255,255,255,0.08); text-decoration: none; }
+.nav-link.active { color: white; font-weight: 700; background: rgba(255,255,255,0.1); }
+.nav-link.active::after { content: ''; position: absolute; bottom: -3px; left: 13px; right: 13px; height: 2px; background: #00AFF0; border-radius: 1px; }
+.nav-right { display: flex; align-items: center; gap: 12px; }
+.nav-user { font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 500; }
+.nav-user strong { color: white; font-weight: 600; }
+.nav-logout { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); padding: 4px 10px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.15s; }
+.nav-logout:hover { color: white; border-color: rgba(255,255,255,0.4); text-decoration: none; }
+
+/* LAYOUT */
+.container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+/* CARDS */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+.card + .card { margin-top: 1rem; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.card-header h2 { font-family: var(--font-body); font-size: 22px; font-weight: 700; color: var(--navy); letter-spacing: 0.01em; line-height: 1.3; }
+
+/* PAGE HEADER */
+.page-header { margin-bottom: 1.75rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.page-header /* H1: Druk Condensed Super, Verzálky / All Caps */
+h1 { font-family: var(--font-display); font-size: 36px; font-weight: 900; color: var(--navy); letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.0; }
+/* H2: Montserrat Bold */
+h2 { font-family: var(--font-body); font-size: 18px; font-weight: 700; color: var(--navy); line-height: 1.3; }
+/* H3: Montserrat Bold, Verzálky */
+h3 { font-family: var(--font-body); font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.label-caps { font-family: var(--font-body); font-size: 10px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+.perex { font-family: var(--font-body); font-size: 15px; font-weight: 500; color: var(--text); line-height: 1.7; }
+.page-header p { color: var(--muted); font-size: 13px; margin-top: 4px; font-weight: 500; }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: var(--radius); font-size: 12px; font-weight: 700; cursor: pointer; border: 1.5px solid transparent; transition: all 0.15s; font-family: "Montserrat", sans-serif !important; text-decoration: none; letter-spacing: 0.04em; text-transform: uppercase; }
+.btn:hover { text-decoration: none; }
+.btn-primary { background: var(--blue); color: white; border-color: var(--blue); }
+.btn-primary:hover { background: #005fa8; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-navy { background: #173767; color: white; border-color: var(--navy); }
+.btn-navy:hover { background: var(--navy-mid); }
+.btn-secondary { background: white; color: var(--navy); border-color: var(--border); }
+.btn-secondary:hover { background: var(--bg); }
+.btn-success { background: var(--success); color: white; border-color: var(--success); }
+.btn-success:hover { background: #085f45; }
+.btn-danger { background: transparent; color: var(--danger); border-color: #f0bcbc; }
+.btn-danger:hover { background: var(--danger-bg); }
+.btn-sm { padding: 5px 11px; font-size: 11px; }
+/* Globalni font reset pro vsechna tlacitka */
+button, input[type="submit"], input[type="button"] {
+  font-family: "Montserrat", sans-serif !important;
+}
+/* Nav links jsou Montserrat */
+
+/* FORMS */
+.form-group { margin-bottom: 1.25rem; }
+label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.07em; }
+input[type=text], input[type=email], input[type=password], textarea, select {
+  width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--radius);
+  font-size: 14px; font-family: var(--font-body); background: white; color: var(--text);
+  transition: border-color 0.15s;
+}
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,112,201,0.1); }
+textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
+
+/* BADGES */
+.badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 3px; letter-spacing: 0.06em; text-transform: uppercase; }
+.badge-blue { background: var(--blue-light); color: var(--blue); }
+.badge-green { background: var(--success-bg); color: var(--success); }
+.badge-gray { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+.badge-cyan { background: #E0F7FC; color: #006E8A; }
+
+/* ALERTS */
+.alert { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 1rem; border-left: 3px solid; font-weight: 500; }
+.alert-error { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.alert-success { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+
+/* SPINNER */
+.spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* TABLE */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; padding: 10px 14px; border-bottom: 2px solid var(--border); background: #f0f3f7; }
+td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #F8FAFC; }
+hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+{% if session.user_id %}
+<nav class="nav">
+  <a href="{{ url_for('main.prehled') }}" class="nav-logo" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+    <img src="/static/logo-white.svg" alt="Commarec" style="height:26px;width:auto;display:block;">
+    <span style="color:rgba(255,255,255,0.4);font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;border-left:1px solid rgba(255,255,255,0.2);padding-left:10px;">Zápisy</span>
+  </a>
+  <div class="nav-divider"></div>
+  <div class="nav-links">
+    <a href="{{ url_for('main.prehled') }}" class="nav-link {% if request.endpoint in ['prehled','klient_detail','klient_vyvoj','klient_novy','klient_upravit','projekt_detail','klienti_list'] %}active{% endif %}">Přehled</a>
+    <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint in ['dashboard','home'] %}active{% endif %}">Zápisy</a>
+    <a href="{{ url_for('zapisy.novy_zapis') }}" class="nav-link {% if request.endpoint == 'novy_zapis' %}active{% endif %}" style="background:#00AFF0; color:#0E213E; padding:6px 16px; border-radius:4px; font-family:'Montserrat',sans-serif; font-weight:800; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; white-space:nowrap;">+ Nový zápis</a>
+    {% if session.is_admin %}
+    <a href="{{ url_for('report.report_mesicni') }}" class="nav-link {% if request.endpoint in ['report_mesicni','progress_report'] %}active{% endif %}">AI Report</a>
+    <a href="{{ url_for('admin_bp.admin') }}" class="nav-link {% if request.endpoint in ['admin','admin_templates'] %}active{% endif %}">Správa</a>
+    <a href="{{ url_for('main.manual') }}" class="nav-link {% if request.endpoint == 'manual' %}active{% endif %}">Manuál</a>
+    {% endif %}
+  </div>
+  <div class="nav-right">
+    <span class="nav-user"><strong>{{ session.user_name }}</strong></span>
+    <a href="{{ url_for('main.logout') }}" class="nav-logout">Odhlásit</a>
+  </div>
+</nav>
+{% endif %}
+{% block content %}{% endblock %}
+</body>
+</html>
