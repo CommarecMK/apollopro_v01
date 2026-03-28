@@ -532,3 +532,9 @@ def crm_prehled():
     from flask import redirect, url_for
     return redirect(url_for("main.prehled"))
 
+
+
+@bp.route("/navod")
+@login_required
+def navod():
+    return render_template("navod.html")

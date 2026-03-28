@@ -171,6 +171,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
     {% if session.is_admin %}
     <a href="{{ url_for('report.report_mesicni') }}" class="nav-link {% if request.endpoint in ['report_mesicni','progress_report'] %}active{% endif %}">AI Report</a>
     <a href="{{ url_for('admin_bp.admin') }}" class="nav-link {% if request.endpoint in ['admin','admin_templates'] %}active{% endif %}">Správa</a>
+    <a href="{{ url_for('main.navod') }}" class="nav-link {% if request.endpoint == 'main.navod' %}active{% endif %}">Návod</a>
     {% endif %}
   </div>
   <div class="nav-right">
