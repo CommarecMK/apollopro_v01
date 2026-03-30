@@ -12,6 +12,7 @@ import anthropic
 import requests
 
 from werkzeug.utils import secure_filename
+from .main import save_klient_logo
 
 bp = Blueprint("klienti", __name__)
 

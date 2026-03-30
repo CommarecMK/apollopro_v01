@@ -147,7 +147,7 @@ ALLOWED_LOGO_EXT = {'png', 'jpg', 'jpeg', 'svg', 'webp'}
 MAX_LOGO_BYTES   = 2 * 1024 * 1024  # 2 MB
 
 def save_klient_logo(file_obj, klient_id):
-    """Uloží logo klienta do static/logos/, vrátí URL nebo None."""
+    """Uloží logo klienta jako base64 data URL do DB — přežije každý Railway deploy."""
     if not file_obj or not file_obj.filename:
         return None
     ext = file_obj.filename.rsplit('.', 1)[-1].lower()
@@ -158,11 +158,14 @@ def save_klient_logo(file_obj, klient_id):
     file_obj.seek(0)
     if size > MAX_LOGO_BYTES:
         return None
-    filename = secure_filename(f"klient_{klient_id}_{secrets.token_hex(6)}.{ext}")
-    upload_dir = os.path.join(current_app.root_path, 'static', 'logos')
-    os.makedirs(upload_dir, exist_ok=True)
-    file_obj.save(os.path.join(upload_dir, filename))
-    return f"/static/logos/{filename}"
+    import base64
+    data = file_obj.read()
+    mime = {
+        'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+        'svg': 'image/svg+xml', 'webp': 'image/webp'
+    }.get(ext, 'image/png')
+    b64 = base64.b64encode(data).decode('ascii')
+    return f"data:{mime};base64,{b64}"
 # ────────────────────────────────────────────────────────────────────
 
 

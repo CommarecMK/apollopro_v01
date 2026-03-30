@@ -16,7 +16,7 @@ class Klient(db.Model):
     telefon     = db.Column(db.String(60),  default="")
     adresa      = db.Column(db.String(300), default="")
     poznamka    = db.Column(db.Text, default="")
-    logo_url    = db.Column(db.String(500), default="")  # URL loga klienta
+    logo_url    = db.Column(db.Text, default="")  # base64 data URL nebo externá URL loga
     ic          = db.Column(db.String(20), default="")   # IČ
     dic         = db.Column(db.String(20), default="")   # DIČ
     sidlo       = db.Column(db.String(300), default="")  # Adresa sídla (fakturační)

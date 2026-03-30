@@ -506,6 +506,48 @@ def get_freelo_members(project_id):
     except Exception as e:
         return jsonify({"members":[]})
 
+@bp.route("/api/klient/<int:klient_id>/freelo-members", methods=["GET"])
+@login_required
+def get_klient_freelo_members(klient_id):
+    """Vrátí členy Freelo projektu pro daného klienta — podle tasklist_id klienta."""
+    if not FREELO_API_KEY or not FREELO_EMAIL:
+        return jsonify({"members": []})
+    try:
+        k = Klient.query.get_or_404(klient_id)
+        tasklist_id = k.freelo_tasklist_id
+        if not tasklist_id:
+            return jsonify({"members": []})
+
+        # Najdi project_id z tasklist_id
+        project_id = None
+        resp_p = freelo_get("/projects")
+        if resp_p.status_code == 200:
+            raw_p = resp_p.json()
+            projects_list = raw_p if isinstance(raw_p, list) else raw_p.get("data", [])
+            for proj in projects_list:
+                if not isinstance(proj, dict): continue
+                for tl in proj.get("tasklists", []):
+                    if str(tl.get("id")) == str(tasklist_id):
+                        project_id = proj["id"]
+                        break
+                if project_id:
+                    break
+
+        if not project_id:
+            return jsonify({"members": []})
+
+        resp = freelo_get(f"/project/{project_id}/workers")
+        members = []
+        if resp.status_code == 200:
+            workers = resp.json().get("data", {}).get("workers", [])
+            for w in workers:
+                if isinstance(w, dict) and w.get("fullname"):
+                    members.append({"id": w["id"], "name": w["fullname"], "email": w.get("email", "")})
+        return jsonify({"members": members})
+    except Exception as e:
+        current_app.logger.error(f"freelo-members klient {klient_id}: {e}")
+        return jsonify({"members": []})
+
 @bp.route("/api/freelo/create-tasklist", methods=["POST"])
 @login_required
 def create_freelo_tasklist():
