@@ -1,5 +1,5 @@
 """routes/zapisy.py"""
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, abort, current_app
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, abort, current_app, Response, stream_with_context
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from ..extensions import db, ANTHROPIC_API_KEY, FREELO_API_KEY, FREELO_EMAIL, FREELO_PROJECT_ID
@@ -42,18 +42,20 @@ def generovat():
     blocks      = set(client_info.get("blocks", [
         "uvod","zjisteni","hodnoceni","procesy","rizika","kroky","prinosy","poznamky","dalsi_krok"
     ]))
-    notes_raw       = data.get("notes", [])   # [{title, text}, ...]
+    notes_raw       = data.get("notes", [])
     interni_prompt  = data.get("interni_prompt", "").strip()
     klient_id       = data.get("klient_id")
     projekt_id      = data.get("projekt_id")
-    freelo_context  = data.get("freelo_context", [])  # [{id, name, state, description, comments, assignee, deadline}]
+    freelo_context  = data.get("freelo_context", [])
+    user_id         = session["user_id"]
 
     if not input_text:
         return jsonify({"error": "Prazdny text"}), 400
 
+    # ── Vše potřebné připrav PŘED generátorem (Flask kontext) ──────────────
+
     ai = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-    # Load client profile for context
     klient_profil = None
     if klient_id:
         k = Klient.query.get(klient_id)
@@ -63,10 +65,8 @@ def generovat():
             except Exception:
                 pass
 
-    # Zkondenzuj dlouhe prepisy — aby vystup AI nepresahl limit tokenu
-    # Limit: 6000 znaku ~ 1700 tokenu vstupu, vystup pak snadno vejde do 8000 tokenu
     transcript = input_text
-    if len(input_text) > 50000:  # Zkracuj jen opravdu dlouhé přepisy (>50k znaků = cca 2h+)
+    if len(input_text) > 50000:
         try:
             current_app.logger.info(f"Condensing transcript: {len(input_text)} chars")
             transcript = condensed_transcript(ai, input_text)
@@ -74,14 +74,13 @@ def generovat():
         except Exception as e:
             current_app.logger.warning(f"Condensation failed, using original: {e}")
 
-    # Combine notes with transcript
     notes_text = ""
     if notes_raw:
         notes_parts = []
         for n in notes_raw:
             if n.get("text","").strip():
-                title = n.get("title","Poznamka")
-                notes_parts.append(f"[{title}]\n{n['text'].strip()}")
+                t_title = n.get("title","Poznamka")
+                notes_parts.append(f"[{t_title}]\n{n['text'].strip()}")
         if notes_parts:
             notes_text = "\n\n".join(notes_parts)
 
@@ -94,18 +93,14 @@ Misto: {client_info.get('meeting_place', '')}
 Typ schuzky: {TEMPLATE_NAMES.get(template, template)}
 """
 
-    user_message = f"""INFORMACE O SCHUZCE:
-{client_context}
-"""
+    user_message = f"INFORMACE O SCHUZCE:\n{client_context}\n"
     if notes_text:
         user_message += f"\nPOZNAMKY Z TERENU (auditora):\n{notes_text}\n"
 
-    # Přidej Freelo kontext pokud byl vybrán
     if freelo_context:
         freelo_lines = []
         done_tasks = [t for t in freelo_context if t.get("state") == "done"]
         open_tasks = [t for t in freelo_context if t.get("state") == "open"]
-
         if done_tasks:
             freelo_lines.append(f"DOKONČENÉ ÚKOLY OD POSLEDNÍHO ZÁPISU ({len(done_tasks)}):")
             for t in done_tasks:
@@ -117,7 +112,6 @@ Typ schuzky: {TEMPLATE_NAMES.get(template, template)}
                     freelo_lines.append(f"    Popis: {t['description'][:200]}")
                 for c in (t.get("comments") or [])[:3]:
                     freelo_lines.append(f"    Komentář ({c.get('author','?')}): {c.get('content','')[:150]}")
-
         if open_tasks:
             freelo_lines.append(f"\nAKTIVNÍ ÚKOLY ({len(open_tasks)}):")
             for t in open_tasks:
@@ -129,7 +123,6 @@ Typ schuzky: {TEMPLATE_NAMES.get(template, template)}
                     freelo_lines.append(f"    Popis: {t['description'][:200]}")
                 for c in (t.get("comments") or [])[:2]:
                     freelo_lines.append(f"    Komentář ({c.get('author','?')}): {c.get('content','')[:150]}")
-
         if freelo_lines:
             user_message += f"\n\nFREELO ÚKOLY — STAV A ZMĚNY:\n" + "\n".join(freelo_lines) + "\n"
             user_message += "\nTyto Freelo úkoly zahrň DO SEKCE ===FREELO_STATUS=== jako přehlednou HTML tabulku.\n"
@@ -139,51 +132,25 @@ Typ schuzky: {TEMPLATE_NAMES.get(template, template)}
 
     system = build_system_prompt(interni_prompt, klient_profil, template)
 
-    try:
-        message = ai.messages.create(
-            model="claude-sonnet-4-5", max_tokens=8000,
-            system=system,
-            messages=[{"role": "user", "content": user_message}]
-        )
-        raw = message.content[0].text.strip()
-        current_app.logger.info(f"AI response: {len(raw)} chars, stop={message.stop_reason}")
-    except Exception as e:
-        return jsonify({"error": f"Chyba API: {str(e)}"}), 500
+    # ── Parsovací helpery ──────────────────────────────────────────────────
 
-    # Parse section markers ===SEKCE===
     SECTION_KEYS = [
-        # Standardní sekce (všechny typy)
         "participants_commarec", "participants_company", "introduction", "meeting_goal",
         "findings", "ratings", "processes_description", "dangers", "suggested_actions",
         "expected_benefits", "additional_notes", "summary", "tasks",
-        # Freelo status — samostatná sekce pro stav úkolů
         "freelo_status",
-        # Operativa
         "current_state",
-        # Obchod
         "client_situation", "client_needs", "opportunities", "risks",
         "commercial_model", "next_steps", "expected_impact", "client_signals",
     ]
 
     def parse_sections(text):
-        """Parsuje sekce z AI odpovědi. Zvládá různé formáty markerů.
-        Také opravuje časté chyby: JSON pole místo HTML, raw text bez markerů.
-        """
         result = {}
         current_key = None
         current_lines = []
-
-        # Normalizuj alternativní markery na standard ===KEY===
-        import re as _re
-        # Zvládne: ## PARTICIPANTS_COMMAREC, # PARTICIPANTS_COMMAREC:, **PARTICIPANTS_COMMAREC**
-        alt_marker = _re.compile(
-            r'^(?:#+\s*|[*]{2})?([A-Z_]{3,30})(?:[:\s*]*)?$'
-        )
-
+        alt_marker = re.compile(r'^(?:#+\s*|[*]{2})?([A-Z_]{3,30})(?:[:\s*]*)?$')
         for line in text.split("\n"):
             stripped = line.strip()
-
-            # Hlavní formát: ===KEY===
             if stripped.startswith("===") and stripped.endswith("==="):
                 if current_key:
                     result[current_key] = "\n".join(current_lines).strip()
@@ -197,8 +164,6 @@ Typ schuzky: {TEMPLATE_NAMES.get(template, template)}
                 else:
                     current_key = None
                     current_lines = []
-
-            # Fallback: alternativní markery (## PARTICIPANTS_COMMAREC)
             elif not current_key or not current_lines:
                 m = alt_marker.match(stripped)
                 if m:
@@ -213,25 +178,19 @@ Typ schuzky: {TEMPLATE_NAMES.get(template, template)}
                     current_lines.append(line)
             else:
                 current_lines.append(line)
-
         if current_key:
             result[current_key] = "\n".join(current_lines).strip()
-
-        # Oprav hodnoty: JSON array ["x","y"] → <p>x, y</p>
         for k, v in result.items():
             if v and v.strip().startswith('[') and v.strip().endswith(']'):
                 try:
-                    import json as _json
-                    items = _json.loads(v.strip())
+                    items = json.loads(v.strip())
                     if isinstance(items, list):
                         result[k] = "<p>" + ", ".join(str(i) for i in items) + "</p>"
                 except Exception:
                     pass
-
         return result
 
     def parse_tasks(tasks_text):
-        """Parsuje UKOL/POPIS/TERMIN bloky ze sekce TASKS."""
         tasks = []
         if not tasks_text:
             return tasks
@@ -253,13 +212,45 @@ Typ schuzky: {TEMPLATE_NAMES.get(template, template)}
             tasks.append(current)
         return tasks[:8]
 
-    summary_json = parse_sections(raw)
-    current_app.logger.info(f"Parsed sections: {list(summary_json.keys())}")
+    def sse(event_dict):
+        return f"data: {json.dumps(event_dict, ensure_ascii=False)}\n\n"
 
-    # Pokud parser nic nenasel — AI ignorovalo format, zkus znovu s pripomentim
-    if not summary_json:
-        current_app.logger.warning(f"No sections found, retrying. Raw start: {raw[:200]}")
-        retry_msg = user_message + """
+    # ── SSE generátor — běží po celou dobu AI volání ───────────────────────
+
+    app = current_app._get_current_object()
+
+    def stream():
+        with app.app_context():
+            try:
+                yield sse({"type": "progress", "msg": "Analyzuji přepis schůzky..."})
+
+                # Streamuj AI odpověď — keepalive každý chunk, timeout nikdy nevypálí
+                raw_chunks = []
+                yield sse({"type": "progress", "msg": "Generuji zápis (může trvat 2–5 min)..."})
+
+                with ai.messages.stream(
+                    model="claude-sonnet-4-5",
+                    max_tokens=8000,
+                    system=system,
+                    messages=[{"role": "user", "content": user_message}]
+                ) as stream_ctx:
+                    for text_chunk in stream_ctx.text_stream:
+                        raw_chunks.append(text_chunk)
+                        # Keepalive — gunicorn vidí data, timeout se nespustí
+                        yield sse({"type": "chunk"})
+
+                raw = "".join(raw_chunks).strip()
+                current_app.logger.info(f"AI stream done: {len(raw)} chars")
+
+                yield sse({"type": "progress", "msg": "Zpracovávám sekce..."})
+
+                summary_json = parse_sections(raw)
+                current_app.logger.info(f"Parsed sections: {list(summary_json.keys())}")
+
+                if not summary_json:
+                    current_app.logger.warning(f"No sections, retrying. Raw[:200]: {raw[:200]}")
+                    yield sse({"type": "progress", "msg": "Opakuji generování (formát)..."})
+                    retry_msg = user_message + """
 
 DULEZITE: Tvuj vystup MUSI zacinat presne takto (bez jakehokoliv uvodni textu):
 ===PARTICIPANTS_COMMAREC===
@@ -269,66 +260,91 @@ DULEZITE: Tvuj vystup MUSI zacinat presne takto (bez jakehokoliv uvodni textu):
 atd.
 
 Pouzij PRESNE tyto markery, jinak aplikace zapis nezobrazi."""
-        try:
-            retry = ai.messages.create(
-                model="claude-sonnet-4-5", max_tokens=8000,
-                system=system,
-                messages=[{"role": "user", "content": retry_msg}]
-            )
-            raw = retry.content[0].text.strip()
-            summary_json = parse_sections(raw)
-            current_app.logger.info(f"Retry parsed sections: {list(summary_json.keys())}")
-        except Exception as e:
-            current_app.logger.error(f"Retry failed: {e}")
+                    retry_chunks = []
+                    with ai.messages.stream(
+                        model="claude-sonnet-4-5",
+                        max_tokens=8000,
+                        system=system,
+                        messages=[{"role": "user", "content": retry_msg}]
+                    ) as stream_retry:
+                        for text_chunk in stream_retry.text_stream:
+                            retry_chunks.append(text_chunk)
+                            yield sse({"type": "chunk"})
+                    raw = "".join(retry_chunks).strip()
+                    summary_json = parse_sections(raw)
+                    current_app.logger.info(f"Retry sections: {list(summary_json.keys())}")
 
-    if not summary_json:
-        current_app.logger.error(f"Both attempts failed. Raw: {raw[:400]}")
-        return jsonify({"error": f"AI nevrátilo ocekávany format ani po opakování. Začátek odpovědi: {raw[:150]}"}), 500
+                if not summary_json:
+                    yield sse({"type": "error", "error": f"AI nevrátilo očekávaný formát. Začátek: {raw[:150]}"})
+                    return
 
-    tasks = parse_tasks(summary_json.pop("tasks", ""))
+                tasks = parse_tasks(summary_json.pop("tasks", ""))
+                output_text = assemble_output_text(client_info, summary_json, blocks)
 
-    output_text = assemble_output_text(client_info, summary_json, blocks)
+                client_name  = client_info.get("client_name","").strip()
+                meeting_date = client_info.get("meeting_date","").strip()
+                title = f"{client_name} - {meeting_date}" if client_name else f"Zapis {meeting_date}"
 
-    # Build title
-    client_name  = client_info.get("client_name","").strip()
-    meeting_date = client_info.get("meeting_date","").strip()
-    title = f"{client_name} - {meeting_date}" if client_name else f"Zapis {meeting_date}"
+                yield sse({"type": "progress", "msg": "Ukládám zápis..."})
 
-    # Auto-update client profile v pozadí (neblokuje odpověď)
-    if klient_id:
-        import threading
-        def update_profil_bg(app_ctx, kid, text):
-            with app_ctx:
+                zapis = Zapis(
+                    title=title, template=template,
+                    input_text=input_text,
+                    output_json=json.dumps(summary_json, ensure_ascii=False),
+                    output_text=output_text,
+                    tasks_json=json.dumps(tasks, ensure_ascii=False),
+                    notes_json=json.dumps(notes_raw, ensure_ascii=False),
+                    interni_prompt=interni_prompt,
+                    user_id=user_id,
+                    klient_id=int(klient_id) if klient_id else None,
+                    projekt_id=int(projekt_id) if projekt_id else None,
+                )
                 try:
-                    k = Klient.query.get(kid)
-                    if k:
-                        ai_bg = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-                        existing = json.loads(k.profil_json or "{}")
-                        new_profil = extract_klient_profil(ai_bg, text[:10000], existing)
-                        k.profil_json = json.dumps(new_profil, ensure_ascii=False)
-                        db.session.commit()
+                    db.session.expire_all()
+                    db.session.add(zapis)
+                    db.session.commit()
                 except Exception as e:
-                    current_app.logger.warning(f"BG profile extraction failed: {e}")
-        t = threading.Thread(target=update_profil_bg, args=(current_app._get_current_object().app_context(), int(klient_id), input_text), daemon=True)
-        t.start()
+                    db.session.rollback()
+                    current_app.logger.error(f"generovat DB commit error: {e}")
+                    yield sse({"type": "error", "error": f"Zápis vygenerován, ale nepodařilo se uložit: {str(e)}"})
+                    return
 
-    zapis = Zapis(
-        title=title, template=template,
-        input_text=input_text,
-        output_json=json.dumps(summary_json, ensure_ascii=False),
-        output_text=output_text,
-        tasks_json=json.dumps(tasks, ensure_ascii=False),
-        notes_json=json.dumps(notes_raw, ensure_ascii=False),
-        interni_prompt=interni_prompt,
-        user_id=session["user_id"],
-        klient_id=int(klient_id) if klient_id else None,
-        projekt_id=int(projekt_id) if projekt_id else None,
+                # BG profil update
+                if klient_id:
+                    import threading
+                    def update_profil_bg(app_ctx, kid, text):
+                        with app_ctx:
+                            try:
+                                k = Klient.query.get(kid)
+                                if k:
+                                    ai_bg = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+                                    existing = json.loads(k.profil_json or "{}")
+                                    new_profil = extract_klient_profil(ai_bg, text[:10000], existing)
+                                    k.profil_json = json.dumps(new_profil, ensure_ascii=False)
+                                    db.session.commit()
+                            except Exception as e:
+                                pass
+                    threading.Thread(
+                        target=update_profil_bg,
+                        args=(app.app_context(), int(klient_id), input_text),
+                        daemon=True
+                    ).start()
+
+                yield sse({"type": "done", "zapis_id": zapis.id, "text": output_text,
+                           "tasks": tasks, "title": title, "summary": summary_json})
+
+            except Exception as e:
+                current_app.logger.error(f"generovat stream error: {e}")
+                yield sse({"type": "error", "error": f"Chyba: {str(e)}"})
+
+    return Response(
+        stream_with_context(stream()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",   # vypne nginx buffering
+        }
     )
-    db.session.add(zapis)
-    db.session.commit()
-
-    return jsonify({"zapis_id": zapis.id, "text": output_text,
-                    "tasks": tasks, "title": title, "summary": summary_json})
 
 # ─────────────────────────────────────────────
 # API — EDIT SECTION
@@ -349,7 +365,12 @@ def ulozit_sekci(zapis_id):
         summary = {}
     summary[key] = html
     zapis.output_json = json.dumps(summary, ensure_ascii=False)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"ulozit_sekci DB error: {e}")
+        return jsonify({"error": f"Chyba při ukládání: {str(e)}"}), 500
     return jsonify({"ok": True})
 
 @bp.route("/api/zapis/<int:zapis_id>/ai-sekce", methods=["POST"])

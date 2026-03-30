@@ -511,7 +511,7 @@ async function generovat() {
   const notes = getNotes();
 
   try {
-    const rawResp = await fetch('/api/generovat', {
+    const response = await fetch('/api/generovat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ template: selectedTemplate, text, client_info: clientInfo,
@@ -519,25 +519,34 @@ async function generovat() {
         interni_prompt: interniPrompt, notes,
         freelo_context: getSelectedFreeloKontext() })
     });
-    const rawText = await rawResp.text();
-    let data;
-    try { data = JSON.parse(rawText); }
-    catch(e) {
-      hideLoading();
-      alert('Chyba serveru: ' + rawText.substring(0, 300));
-      btn.disabled = false; btn.textContent = 'Generovat zápis →';
-      return;
-    }
-    if (data.error) {
-      hideLoading();
-      alert('Chyba: ' + data.error);
-      btn.disabled = false; btn.textContent = 'Generovat zápis →';
-      return;
-    }
 
-    hideLoading();
-    // Přesměrovat na detail stránku kde je Freelo panel
-    window.location.href = '/zapis/' + data.zapis_id;
+    // SSE streaming — čteme průběžně, gunicorn timeout nikdy nevypálí
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop(); // poslední neúplná část
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        let event;
+        try { event = JSON.parse(part.slice(6)); } catch(e) { continue; }
+        if (event.type === 'progress') {
+          document.getElementById('loading-msg').textContent = event.msg;
+        } else if (event.type === 'done') {
+          hideLoading();
+          window.location.href = '/zapis/' + event.zapis_id;
+          return;
+        } else if (event.type === 'error') {
+          throw new Error(event.error);
+        }
+        // 'chunk' — jen keepalive, ignoruj
+      }
+    }
 
   } catch (err) {
     hideLoading();

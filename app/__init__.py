@@ -24,7 +24,11 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"]      = database_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["JSON_AS_ASCII"]                = False
-    app.config["SQLALCHEMY_ENGINE_OPTIONS"]    = {"pool_pre_ping": True}
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"]    = {
+        "pool_pre_ping": True,       # otestuje spojení před každým použitím
+        "pool_recycle": 280,         # recykluj spojení po 280s (Railway timeout ~300s)
+        "pool_timeout": 20,          # max čekání na volné spojení z poolu
+    }
 
     # ─── Jinja2 filtry ────────────────────────────────────────────────────────
     app.jinja_env.filters["fromjson"]       = lambda s: _json.loads(s) if s else {}
