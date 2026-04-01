@@ -57,10 +57,9 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
-    background: linear-gradient(135deg,#0E213E 0%,#173767 60%,#1a4a8a 100%) !important;
+    background: #173767 !important;
     border-radius: 0 !important;
     margin: 0 !important;
-    margin-bottom: 0 !important;
     page-break-inside: avoid;
   }
   .meta-logo-bar {
@@ -70,9 +69,9 @@
   }
   .meta-hero {
     padding: 14pt 20pt !important;
+    background: #173767 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    background: transparent !important;
   }
   .zapis-meta-title {
     color: white !important;
@@ -211,7 +210,7 @@
   .interni-instrukce { display: none !important; }
 } 
 /* === HEADER — Figma vzor === */
-.zapis-meta{background:linear-gradient(135deg,#0E213E 0%,#173767 60%,#1a4a8a 100%);padding:0;display:flex;flex-direction:column;position:relative;overflow:hidden;}
+.zapis-meta{background:#173767;padding:0;display:flex;flex-direction:column;position:relative;overflow:hidden;}
 /* Bílý pruh s logy — přes celou šířku */
 .meta-logo-bar{background:white;padding:0 2.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:none;}
 .meta-logo-dark{height:24px;width:auto;display:block;flex-shrink:0;}
@@ -278,5 +277,38 @@
 
 <!-- FREELO --> <div class="card tasks-section" style="margin-top:1rem;" id="freelo-panel"> <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;padding-bottom:12px;border-bottom:1px solid var(--border);"> <div> <div style="font-family:'Montserrat',sans-serif;font-size:12px;font-weight:800;color:#173767;text-transform:uppercase;letter-spacing:0.04em;">Úkoly pro Freelo</div> <div id="task-count-label" style="font-size:10px;font-weight:600;color:#4A6080;text-transform:uppercase;letter-spacing:0.04em;margin-top:3px;"></div> </div> {% if zapis.freelo_sent %}<span class="badge badge-green" style="font-size:11px;padding:5px 14px;">&#x2713; Odesláno</span>{% endif %} </div> <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:1rem;flex-wrap:wrap;"> {% if klient_tasklist_id %} <div style="flex:1;display:flex;align-items:center;gap:10px;background:#f0f5fb;border:1.5px solid #c8d8ee;border-radius:6px;padding:10px 14px;"> <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;opacity:0.5"><rect x="2" y="7" width="12" height="7" rx="1.5" stroke="#173767" stroke-width="1.5"/><path d="M5 7V5a3 3 0 016 0v2" stroke="#173767" stroke-width="1.5" stroke-linecap="round"/></svg> <div> <div style="font-size:10px;font-weight:700;color:#4A6080;text-transform:uppercase;letter-spacing:0.08em;">Freelo To-Do list</div> <div style="font-size:13px;font-weight:700;color:#173767;margin-top:1px;">{{ klient_tasklist_name or klient_tasklist_id }}</div> </div> <a href="{{ url_for('klienti.klient_detail', klient_id=zapis.klient_id) }}" style="margin-left:auto;font-size:11px;color:#4A6080;text-decoration:none;white-space:nowrap;">změnit u klienta →</a> <input type="hidden" id="tasklist-select" value="{{ klient_tasklist_id }}"> </div> <input type="hidden" id="project-select" value=""> {% else %} <div style="flex:1;min-width:140px;"><label class="fl-lbl">Freelo projekt</label><select id="project-select" onchange="onProjectChange()" class="fl-in" style="cursor:pointer;"><option value="">Načítám...</option></select></div> <div style="flex:1;min-width:140px;"><label class="fl-lbl">To-Do list</label><select id="tasklist-select" class="fl-in" style="cursor:pointer;"><option value="">— vyberte projekt —</option></select></div> {% endif %} <div style="display:flex;gap:6px;flex-wrap:wrap;padding-bottom:1px;"> {% if not klient_tasklist_id %}<button onclick="openNewListModal()" class="btn btn-secondary btn-sm">+ + Nový list</button>{% endif %} <button onclick="selectAllTasks(true)" style="font-size:10px;font-weight:700;color:#00AFF0;background:none;border:1.5px solid #00AFF0;border-radius:4px;padding:6px 11px;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;font-family:'Montserrat',sans-serif;">Vše</button> <button onclick="selectAllTasks(false)" style="font-size:10px;font-weight:700;color:#4A6080;background:none;border:1.5px solid var(--border);border-radius:4px;padding:6px 11px;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;font-family:'Montserrat',sans-serif;">Nic</button> <button onclick="addTaskRow()" style="font-size:10px;font-weight:700;color:#0A7A5A;background:none;border:1.5px solid #0A7A5A;border-radius:4px;padding:6px 11px;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;font-family:'Montserrat',sans-serif;">+ Přidat úkol</button> </div> </div> <div style="display:grid;grid-template-columns:28px 1fr 180px 150px 34px;gap:8px;padding:0 0 6px;border-bottom:2px solid var(--border);margin-bottom:2px;"> <div></div> <div style="font-size:10px;font-weight:700;color:#4A6080;text-transform:uppercase;letter-spacing:0.04em;">Úkol + popis</div> <div style="font-size:10px;font-weight:700;color:#4A6080;text-transform:uppercase;letter-spacing:0.04em;">Zodpovědná osoba</div> <div style="font-size:10px;font-weight:700;color:#4A6080;text-transform:uppercase;letter-spacing:0.04em;">Termín</div> <div></div> </div> <div id="tasks-list-container"> {% if tasks %} {% for task in tasks %} <div class="task-row freelo-task-row" data-idx="{{ loop.index0 }}"> <div style="padding-top:4px;"><input type="checkbox" class="task-checkbox" checked style="width:16px;height:16px;accent-color:#00AFF0;cursor:pointer;margin:0;"></div> <div> <input type="text" class="task-name-input fl-in" value="{{ task.name }}" style="font-size:13px;font-weight:600;margin-bottom:4px;"> <div class="fl-rte-wrap"><div class="fl-rte-toolbar"><button class="fl-rte-btn" onmousedown="event.preventDefault();document.execCommand('bold')" title="Tučné"><strong>B</strong></button><button class="fl-rte-btn" onmousedown="event.preventDefault();document.execCommand('italic')" title="Kurzíva"><em>I</em></button><div class="fl-rte-sep"></div><button class="fl-rte-btn" onmousedown="event.preventDefault();document.execCommand('insertUnorderedList')" title="Seznam">≡</button></div><div class="fl-rte-editor task-desc-text" contenteditable="true">{{ task.desc if task.desc else "" }}</div></div> </div> <div class="asgn-wrap"> <input type="text" class="task-assignee fl-in" placeholder="Vybrat..." autocomplete="off" onfocus="openAD(this)" oninput="filterAD(this)" style="cursor:pointer;"> <div class="asgn-dd"></div> </div> <input type="date" class="task-deadline fl-in" value="{{ task.deadline if task.deadline and task.deadline not in ["dle dohody",""] else "" }}"> <button onclick="openDetail(this)" title="Detail" style="background:none;border:1.5px solid var(--border);border-radius:4px;width:32px;height:32px;cursor:pointer;font-size:12px;color:#4A6080;display:flex;align-items:center;justify-content:center;margin-top:1px;">&#x22EF;</button> </div> {% endfor %} {% else %} <div id="no-tasks-msg" style="padding:1.5rem 0;font-size:13px;color:#4A6080;font-style:italic;text-align:center;">Žádné úkoly.</div> {% endif %} </div> <div style="margin-top:1.25rem;display:flex;gap:12px;align-items:center;flex-wrap:wrap;"> <button id="freelo-send-btn" onclick="odeslatDoFreela()" style="font-family:'Montserrat',sans-serif;font-size:13px;font-weight:700;background:#0A7A5A;color:white;border:none;padding:11px 24px;border-radius:5px;cursor:pointer;">Odeslat vybrané do Freela &rarr;</button> <span id="freelo-status" style="font-size:12px;color:#4A6080;font-weight:500;"></span> </div> <div id="freelo-result" style="margin-top:12px;"></div> </div> </div> <div id="toast"></div> <!-- AI LOADING OVERLAY --> <div id="ai-loading-overlay"> <img src="/static/logo-white.svg" alt="Commarec" class="ai-loading-logo"> <div class="ai-loading-title" id="ai-loading-title">AI upravuje sekci</div> <div class="ai-loading-bar-wrap"><div class="ai-loading-bar"></div></div> <div class="ai-loading-dots"> <div class="ai-loading-dot"></div> <div class="ai-loading-dot"></div> <div class="ai-loading-dot"></div> </div> <div class="ai-loading-sub" id="ai-loading-sub">Pracuji...</div> </div> <div id="modal-new-list" class="modal-bg"> <div class="modal-box"> <div class="modal-title">Nový To-Do list</div> <label class="fl-lbl" style="margin-bottom:5px;">Projekt</label> <select id="new-list-project" class="fl-in" style="margin-bottom:14px;cursor:pointer;padding:9px 12px;font-size:13px;"></select> <label class="fl-lbl" style="margin-bottom:5px;">Název listu</label> <input id="new-list-name" type="text" class="fl-in" placeholder="Např. Klient — akcni kroky" style="font-size:12px;padding:10px 12px;"> <div class="modal-foot"> <button class="btn-mcancel" onclick="closeModal('modal-new-list')">Zrušit</button> <button class="btn-msave" id="create-list-btn" onclick="createNewList()">Vytvořit</button> </div> </div> </div> <div id="modal-task-detail" class="modal-bg"> <div class="modal-box"> <div class="modal-title">Detail úkolu</div> <div style="display:grid;gap:14px;"> <div><label class="fl-lbl" style="margin-bottom:5px;">Název úkolu</label><input id="detail-name" type="text" class="fl-in" style="font-size:13px;font-weight:600;padding:9px 12px;"></div> <div><label class="fl-lbl" style="margin-bottom:5px;">Popis</label><textarea id="detail-desc" rows="4" class="fl-in" style="resize:vertical;font-size:13px;padding:9px 12px;"></textarea></div> <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"> <div class="asgn-wrap"><label class="fl-lbl" style="margin-bottom:5px;">Zodpovědná osoba</label><input id="detail-assignee" type="text" class="fl-in" placeholder="Vybrat..." autocomplete="off" onfocus="openAD(this)" oninput="filterAD(this)" style="padding:9px 12px;cursor:pointer;"><div class="asgn-dd"></div></div> <div><label class="fl-lbl" style="margin-bottom:5px;">Termín</label><input id="detail-deadline" type="date" class="fl-in" style="padding:9px 12px;"></div> </div> </div> <div class="modal-foot"> <button class="btn-mcancel" onclick="closeModal('modal-task-detail')">Zrušit</button> <button class="btn-msave" onclick="saveDetail()">Uložit</button> </div> </div> </div> <script>
   const ZAPIS_ID={{ zapis.id }}; const KLIENT_TASKLIST_ID={{ klient_tasklist_id or 'null' }}; const KLIENT_ID={{ zapis.klient_id or 'null' }}; let freeloProjects=[],freeloMembers=[],activeRow=null,nextIdx=1000;
+
+  // ── PRESENCE ─────────────────────────────────────────────────────
+  (function() {
+    const PAGE_KEY = 'zapis_{{ zapis.id }}';
+    async function ping() {
+      try {
+        await fetch('/api/presence/ping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({page_key: PAGE_KEY}) });
+        const r = await fetch('/api/presence/' + PAGE_KEY);
+        const d = await r.json();
+        let banner = document.getElementById('presence-banner-zapis');
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'presence-banner-zapis';
+          banner.style.cssText = 'display:none;background:#fff8e6;border:1.5px solid #FFB800;border-radius:6px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:#856000;align-items:center;gap:10px;';
+          const container = document.querySelector('.container');
+          if (container) container.insertBefore(banner, container.firstChild);
+        }
+        if (d.users && d.users.length > 0) {
+          const list = d.users.map(u => '<strong>' + u.name + '</strong>').join(', ');
+          banner.innerHTML = '👁 ' + list + (d.users.length === 1 ? ' je' : ' jsou') + ' také na tomto zápisu. Případné změny může přepsat jiný uživatel.';
+          banner.style.display = 'flex';
+        } else {
+          banner.style.display = 'none';
+        }
+      } catch(e) {}
+    }
+    ping();
+    setInterval(ping, 30000);
+    window.addEventListener('beforeunload', () => {
+      navigator.sendBeacon('/api/presence/leave', JSON.stringify({page_key: PAGE_KEY}));
+    });
+  })();
+  // ── END PRESENCE ─────────────────────────────────────────────────
 </script>
 <script src="/static/detail.js"></script> {% endblock %}

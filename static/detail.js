@@ -297,12 +297,22 @@ function renderAD(dd, input) {
   });
   dd.innerHTML = members.length
     ? members.map(function(m) {
-        return '<div class="asgn-opt" onclick="pickAsgn(this,' + JSON.stringify(m.name) + ')">' +
+        return '<div class="asgn-opt" data-name="' + m.name.replace(/"/g,'&quot;') + '">' +
                '<strong>' + m.name + '</strong>' +
                '<span style="color:#4A6080;font-size:11px;margin-left:6px;">' + (m.email || "") + '</span>' +
                '</div>';
       }).join("")
     : '<div class="asgn-opt" style="color:#4A6080;font-style:italic;">Žádné výsledky</div>';
+  // Event delegation — jeden listener na celý dropdown
+  dd.onclick = function(e) {
+    const opt = e.target.closest('.asgn-opt[data-name]');
+    if (!opt) return;
+    e.stopPropagation();
+    const name = opt.dataset.name;
+    const w = dd.closest('.asgn-wrap');
+    if (w) { const inp = w.querySelector('input'); if (inp) inp.value = name; }
+    dd.classList.remove('open');
+  };
 }
 
 function openAD(input) {

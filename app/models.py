@@ -451,3 +451,16 @@ class NabidkaPolozka(db.Model):
     def celkem_s_dph(self):
         return self.celkem_bez_dph + self.dph_castka
 
+
+class UserPresence(db.Model):
+    """Sledování přítomnosti uživatelů na stránkách — pro detekci souběžných editací."""
+    __tablename__ = "user_presence"
+    id         = db.Column(db.Integer, primary_key=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    page_key   = db.Column(db.String(100), nullable=False)  # např. "klient_5"
+    last_seen  = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user       = db.relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "page_key", name="uq_presence_user_page"),
+    )

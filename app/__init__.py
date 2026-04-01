@@ -128,6 +128,15 @@ def _init_db(app):
                     created_at TIMESTAMP DEFAULT NOW()
                 )
             """),
+            ("user_presence", "_create", """
+                CREATE TABLE IF NOT EXISTS user_presence (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+                    page_key VARCHAR(100) NOT NULL,
+                    last_seen TIMESTAMP DEFAULT NOW(),
+                    CONSTRAINT uq_presence_user_page UNIQUE (user_id, page_key)
+                )
+            """),
         ]
 
         with db.engine.connect() as conn:

@@ -113,12 +113,84 @@ def login():
 
 @bp.route("/logout")
 def logout():
+    # Vymaž přítomnost uživatele při odhlášení
+    if "user_id" in session:
+        try:
+            from .models import UserPresence
+            UserPresence.query.filter_by(user_id=session["user_id"]).delete()
+            db.session.commit()
+        except Exception:
+            pass
     session.clear()
     return redirect(url_for("main.login"))
 
 # ─────────────────────────────────────────────
-# ROUTES — DASHBOARD
+# PRESENCE API
 # ─────────────────────────────────────────────
+
+@bp.route("/api/presence/ping", methods=["POST"])
+@login_required
+def presence_ping():
+    """Uživatel oznamuje že je na dané stránce. Volá se každých 30s."""
+    from .models import UserPresence
+    data = request.json or {}
+    page_key = data.get("page_key", "").strip()[:100]
+    if not page_key:
+        return jsonify({"ok": False}), 400
+    user_id = session["user_id"]
+    try:
+        existing = UserPresence.query.filter_by(user_id=user_id, page_key=page_key).first()
+        if existing:
+            existing.last_seen = datetime.utcnow()
+        else:
+            # Smaž staré záznamy tohoto uživatele (přešel na jinou stránku)
+            UserPresence.query.filter_by(user_id=user_id).delete()
+            db.session.add(UserPresence(user_id=user_id, page_key=page_key))
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False}), 500
+
+
+@bp.route("/api/presence/leave", methods=["POST"])
+@login_required
+def presence_leave():
+    """Uživatel opouští stránku."""
+    from .models import UserPresence
+    data = request.json or {}
+    page_key = data.get("page_key", "").strip()
+    user_id = session["user_id"]
+    try:
+        if page_key:
+            UserPresence.query.filter_by(user_id=user_id, page_key=page_key).delete()
+        else:
+            UserPresence.query.filter_by(user_id=user_id).delete()
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    return jsonify({"ok": True})
+
+
+@bp.route("/api/presence/<page_key>", methods=["GET"])
+@login_required
+def presence_get(page_key):
+    """Vrátí seznam uživatelů aktivních na dané stránce (last_seen < 90s)."""
+    from .models import UserPresence
+    cutoff = datetime.utcnow() - timedelta(seconds=90)
+    user_id = session["user_id"]
+    try:
+        others = UserPresence.query.filter(
+            UserPresence.page_key == page_key,
+            UserPresence.last_seen >= cutoff,
+            UserPresence.user_id != user_id
+        ).all()
+        return jsonify({"users": [
+            {"id": p.user.id, "name": p.user.name}
+            for p in others if p.user
+        ]})
+    except Exception:
+        return jsonify({"users": []})
 
 @bp.route("/dashboard")
 @login_required

@@ -368,6 +368,13 @@
 
 {% block content %}
 <div id="toast"></div>
+
+<!-- PRESENCE BANNER -->
+<div id="presence-banner" style="display:none;background:#fff8e6;border:1.5px solid #FFB800;border-radius:6px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:#856000;align-items:center;gap:10px;">
+  <span id="presence-names"></span>
+  <span style="margin-left:auto;font-size:11px;opacity:0.7;">Případné změny může přepsat jiný uživatel.</span>
+</div>
+
 <div class="kd-container">
 
   <!-- HEADER -->
@@ -858,6 +865,47 @@
 
 <script>
 const KLIENT_ID = {{ k.id }};
+
+// ── PRESENCE ────────────────────────────────────────────────────────
+const PRESENCE_KEY = 'klient_' + KLIENT_ID;
+let presenceInterval = null;
+
+async function presencePing() {
+  try {
+    await fetch('/api/presence/ping', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ page_key: PRESENCE_KEY })
+    });
+    await presenceCheck();
+  } catch(e) {}
+}
+
+async function presenceCheck() {
+  try {
+    const r = await fetch('/api/presence/' + PRESENCE_KEY);
+    const d = await r.json();
+    const banner = document.getElementById('presence-banner');
+    const names  = document.getElementById('presence-names');
+    if (d.users && d.users.length > 0) {
+      const list = d.users.map(u => '<strong>' + u.name + '</strong>').join(', ');
+      names.innerHTML = '👁 ' + list + (d.users.length === 1 ? ' je' : ' jsou') + ' také na této stránce';
+      banner.style.display = 'flex';
+    } else {
+      banner.style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+// Ping při načtení a pak každých 30s
+presencePing();
+presenceInterval = setInterval(presencePing, 30000);
+
+// Odhlásit se při opuštění stránky
+window.addEventListener('beforeunload', () => {
+  navigator.sendBeacon('/api/presence/leave',
+    JSON.stringify({ page_key: PRESENCE_KEY }));
+});
+// ── END PRESENCE ─────────────────────────────────────────────────────
 
 function toast(msg, ok=true) {
   const t = document.getElementById('toast');
