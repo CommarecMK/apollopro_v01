@@ -68,12 +68,15 @@ ROLE_PERMISSIONS = {
     },
     "konzultant": {
         "create_zapis", "edit_zapis_own", "send_freelo", "view_all",
+        "manage_klient",
     },
     "obchodnik": {
         "nabidky", "nabidky_any", "view_all",
+        "manage_klient",
     },
     "junior": {
         "create_zapis", "edit_zapis_own", "view_assigned",
+        "manage_klient",
     },
     "klient": {
         "portal_only",
