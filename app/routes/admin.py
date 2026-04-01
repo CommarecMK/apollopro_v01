@@ -43,16 +43,35 @@ def pridat_uzivatele():
         session["admin_flash"] = f"Email {email} už existuje."
         return redirect(url_for("admin_bp.admin"))
 
-    import random
-    words = ["Sklad", "Logistika", "Picking", "Trasa", "Expres", "Projekt", "Audit"]
-    password = random.choice(words) + str(random.randint(10,99)) + random.choice(words) + "!"
+    # Heslo — použij zadané nebo vygeneruj automaticky
+    custom_password = request.form.get("password", "").strip()
+    if custom_password:
+        password = custom_password
+        password_display = "(zadáno ručně)"
+    else:
+        import random
+        words = ["Sklad", "Logistika", "Picking", "Trasa", "Expres", "Projekt", "Audit"]
+        password = random.choice(words) + str(random.randint(10,99)) + random.choice(words) + "!"
+        password_display = password
 
     u = User(email=email, name=name, role=role, is_admin=is_admin,
              klient_id=klient_id if role == "klient" else None,
              password_hash=generate_password_hash(password))
+
+    # Freelo — ulož pokud vyplněno
+    freelo_email = request.form.get("freelo_email", "").strip()
+    freelo_api_key = request.form.get("freelo_api_key", "").strip()
+    if freelo_email:
+        u.freelo_email = freelo_email
+    if freelo_api_key:
+        u.freelo_api_key = freelo_api_key
+
     db.session.add(u)
     db.session.commit()
-    session["admin_flash"] = f"Uživatel {name} vytvořen. Heslo: {password}"
+    if custom_password:
+        session["admin_flash"] = f"Uživatel {name} vytvořen s vlastním heslem."
+    else:
+        session["admin_flash"] = f"Uživatel {name} vytvořen. Heslo: {password_display}"
     return redirect(url_for("admin_bp.admin"))
 
 @bp.route("/admin/upravit-uzivatele/<int:user_id>", methods=["POST"])

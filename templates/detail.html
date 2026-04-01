@@ -54,20 +54,35 @@
 
   /* ── Hero header — zachovej barvy ── */
   .zapis-meta {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    background: linear-gradient(135deg,#0E213E 0%,#173767 60%,#1a4a8a 100%) !important;
     border-radius: 0 !important;
     margin: 0 !important;
+    margin-bottom: 0 !important;
+    page-break-inside: avoid;
   }
   .meta-logo-bar {
     background: white !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .meta-hero {
     padding: 14pt 20pt !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: transparent !important;
+  }
+  .zapis-meta-title {
+    color: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .zapis-meta-subtitle {
+    color: #00AFF0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* ── Nadpis zápisu ── */
@@ -79,32 +94,36 @@
   .zapis-meta-subtitle { font-size: 9pt !important; }
 
   /* ── Info bar (klient, projekt, konzultant, datum) ── */
-  .hb-wrap {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+  .zapis-header-block {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: #f7f9fb !important;
   }
-  .hb-item { padding: 8pt 14pt !important; }
-  .hb-lbl { font-size: 7pt !important; }
-  .hb-val { font-size: 10pt !important; }
+  .hb-wrap {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .hb-item { padding: 8pt 14pt !important; border-right: 1px solid #D0DAE8 !important; }
+  .hb-lbl { font-size: 7pt !important; color: #8aa0b8 !important; }
+  .hb-val { font-size: 10pt !important; color: #173767 !important; font-weight: 700 !important; }
 
   /* ── Sekce — nadpisy ── */
   .section-title {
-    font-family: "Montserrat", sans-serif !important; font-weight: 700;
-    font-size: 22pt !important;
+    font-family: "Montserrat", sans-serif !important;
+    font-size: 14pt !important;
     font-weight: 900 !important;
     color: #173767 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.03em !important;
-    line-height: 1.0 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .section-header {
     padding-bottom: 6pt !important;
     margin-bottom: 10pt !important;
     border-bottom: 2pt solid #00AFF0 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* ── Obsah sekcí — čitelný text jako Word ── */

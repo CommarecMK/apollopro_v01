@@ -250,7 +250,21 @@
         <strong>Konzultant:</strong> Vytváří a edituje vlastní zápisy, odesílá úkoly do Freela, vidí všechny klienty.
       </div>
       <div style="background:#f0f7ff;border:1px solid #c0d8f0;border-radius:6px;padding:10px 14px;margin-bottom:4px;font-size:12px;color:#173767;">
-        💡 <strong>Heslo se vygeneruje automaticky.</strong> Zobrazí se po vytvoření — zkopíruj ho a předej uživateli.
+        💡 <strong>Heslo se vygeneruje automaticky</strong> pokud ho nevyplníš. Zobrazí se po vytvoření — zkopíruj ho a předej uživateli.
+      </div>
+      <div class="form-grid" style="margin-top:10px;">
+        <div class="form-field full">
+          <label>Heslo (nechej prázdné = automatické)</label>
+          <input type="password" name="password" placeholder="••••••••" autocomplete="new-password">
+        </div>
+        <div class="form-field">
+          <label>Freelo email</label>
+          <input type="email" name="freelo_email" placeholder="vas@email.cz" autocomplete="off">
+        </div>
+        <div class="form-field">
+          <label>Freelo API klíč</label>
+          <input type="password" name="freelo_api_key" placeholder="Nezadán" autocomplete="new-password">
+        </div>
       </div>
       <div class="modal-foot">
         <button type="button" onclick="document.getElementById('modal-pridat').classList.remove('open')" class="btn btn-secondary">Zrušit</button>

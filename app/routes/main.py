@@ -92,7 +92,7 @@ def home():
 @bp.route("/")
 def index():
     if "user_id" in session:
-        return redirect(url_for("main.prehled"))
+        return redirect(url_for("main.home"))
     return redirect(url_for("main.login"))
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -107,7 +107,7 @@ def login():
             session["user_name"] = user.name
             session["is_admin"]  = user.is_admin
             session["user_role"] = user.role
-            return redirect(url_for("main.dashboard"))
+            return redirect(url_for("main.home"))
         error = "Nespravny e-mail nebo heslo."
     return render_template("login.html", error=error)
 
