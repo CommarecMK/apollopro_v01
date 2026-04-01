@@ -110,7 +110,7 @@ def _init_db(app):
             ("user",  "is_active",      "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE"),
             ("user",  "role",           "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS role VARCHAR(40) DEFAULT 'konzultant'"),
             ("user",  "klient_id",      "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS klient_id INTEGER REFERENCES klient(id)"),
-            ("klient", "logo_url",      "ALTER TABLE klient ADD COLUMN logo_url VARCHAR(500) DEFAULT ''"),
+            ("klient", "logo_url",      "ALTER TABLE klient ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500) DEFAULT ''"),
             ("klient", "logo_url_text", "ALTER TABLE klient ALTER COLUMN logo_url TYPE TEXT"),
             ("klient", "poznamka",      "ALTER TABLE klient ADD COLUMN IF NOT EXISTS poznamka TEXT DEFAULT ''"),
             ("klient", "freelo_tasklist_id", "ALTER TABLE klient ADD COLUMN IF NOT EXISTS freelo_tasklist_id INTEGER"),
@@ -146,7 +146,7 @@ def _init_db(app):
                     conn.commit()
                     print(f"Migrated: {table}.{col}")
                 except Exception:
-                    pass
+                    conn.rollback()  # nutné — jinak PostgreSQL zablokuje další příkazy
 
         # Výchozí admin
         if not User.query.filter_by(email="admin@commarec.cz").first():
