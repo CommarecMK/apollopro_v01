@@ -114,6 +114,20 @@ def _init_db(app):
             ("klient", "logo_url_text", "ALTER TABLE klient ALTER COLUMN logo_url TYPE TEXT"),
             ("klient", "poznamka",      "ALTER TABLE klient ADD COLUMN IF NOT EXISTS poznamka TEXT DEFAULT ''"),
             ("klient", "freelo_tasklist_id", "ALTER TABLE klient ADD COLUMN IF NOT EXISTS freelo_tasklist_id INTEGER"),
+            # Tabulka kontaktních osob klienta
+            ("klient_kontakt", "_create", """
+                CREATE TABLE IF NOT EXISTS klient_kontakt (
+                    id SERIAL PRIMARY KEY,
+                    klient_id INTEGER NOT NULL REFERENCES klient(id) ON DELETE CASCADE,
+                    jmeno VARCHAR(200) NOT NULL,
+                    pozice VARCHAR(200) DEFAULT '',
+                    email VARCHAR(200) DEFAULT '',
+                    telefon VARCHAR(60) DEFAULT '',
+                    poznamka VARCHAR(300) DEFAULT '',
+                    poradi INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """),
         ]
 
         with db.engine.connect() as conn:

@@ -245,6 +245,9 @@ def klient_novy():
             email=request.form.get("email",""),
             telefon=request.form.get("telefon",""),
             adresa=request.form.get("adresa",""),
+            sidlo=request.form.get("sidlo",""),
+            ic=request.form.get("ic",""),
+            dic=request.form.get("dic",""),
             poznamka=request.form.get("poznamka",""),
         )
         db.session.add(k)

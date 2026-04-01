@@ -149,15 +149,16 @@ Vrat POUZE JSON s novymi nebo zmenenenymi hodnotami. Pokud informaci nemas, vrat
 AKTUALNI DATA: {current}
 
 DOSTUPNA POLE:
-- typ_skladu: typ skladu (distribuci, vyrobni, komisionalni...)
-- pocet_sku: pocet SKU (cislo)
-- metody_pickingu: metody kompletace (batch, single, zone...)
-- pocet_zamestnanci: pocet lidi ve skladu
-- pocet_smen: 1, 2 nebo 3
-- wms_system: nazev WMS pokud pouzivaji
-- prumerna_denni_expedice: kusy/objednavky za den
-- hlavni_problemy: hlavni problemy klienta (string)
-- specialni_pozadavky: specificke pozadavky klienta
+- typ_skladu: typ skladu (distribuční, výrobní, e-commerce, komisionální, cross-dock, smíšený, jiný)
+- pocet_sku: pocet SKU — použij přesně jednu z hodnot: do 500, 500–2 000, 2–10 000, 10–50 000, 50k+
+- metody_pickingu: metody kompletace — jedna z: single order, batch picking, zone picking, wave picking, smíšené
+- pocet_zamestnanci: počet zaměstnanců — jedna z: 1–5, 6–15, 16–30, 31–60, 60+
+- pocet_smen: počet směn — jedna z: 1, 2, 3
+- wms_system: název WMS pokud používají (volný text)
+- prumerna_denni_expedice: denní expedice — jedna z: do 50, 50–200, 200–500, 500–1 000, 1 000+
+- plocha_skladu: plocha skladu — jedna z: do 500 m², 500–1 500 m², 1 500–5 000 m², 5 000–15 000 m², 15 000+ m²
+- automatizace: stupeň automatizace — jedna z: manuální, částečně automatizovaný, plně automatizovaný
+- stav_systemu: stav IT systémů — jedna z: bez WMS, základní WMS, pokročilý WMS, WMS+ERP integrace
 
 TEXT:
 {text[:5000]}

@@ -372,15 +372,39 @@
 
   <!-- HEADER -->
   <div class="kd-header">
-    <div>
-      <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">
-        <a href="{{ url_for('main.prehled') }}" style="color:rgba(255,255,255,0.4);text-decoration:none;">← Přehled</a>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <!-- Logo klienta -->
+      <div id="logo-wrap" style="flex-shrink:0;">
+        {% if k.logo_url %}
+          <img src="{{ k.logo_url }}" alt="{{ k.nazev }}" id="klient-logo-img"
+               style="height:48px;max-width:120px;object-fit:contain;border-radius:6px;background:white;padding:4px 8px;cursor:pointer;"
+               title="Klikněte pro změnu loga"
+               onclick="document.getElementById('logo-upload-input').click()"
+               onerror="this.style.display='none';document.getElementById('logo-placeholder').style.display='flex'">
+          <div id="logo-placeholder" style="display:none;width:48px;height:48px;background:rgba(255,255,255,0.15);border-radius:6px;align-items:center;justify-content:center;cursor:pointer;border:1.5px dashed rgba(255,255,255,0.3);"
+               onclick="document.getElementById('logo-upload-input').click()" title="Nahrát logo">
+            <span style="font-size:20px;">🖼</span>
+          </div>
+        {% else %}
+          <div id="logo-placeholder" style="width:48px;height:48px;background:rgba(255,255,255,0.1);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1.5px dashed rgba(255,255,255,0.3);"
+               onclick="document.getElementById('logo-upload-input').click()" title="Nahrát logo">
+            <span style="font-size:20px;opacity:0.6;">🖼</span>
+          </div>
+        {% endif %}
+        <input type="file" id="logo-upload-input" accept="image/png,image/jpeg,image/svg+xml,image/webp"
+               style="display:none;" onchange="uploadLogo(this)">
+        <div id="logo-upload-status" style="font-size:9px;color:rgba(255,255,255,0.5);text-align:center;margin-top:2px;"></div>
       </div>
-      <div class="kd-nazev">{{ k.nazev }}</div>
-      <div class="kd-sub">
-        {% if k.kontakt %}<span style="color:rgba(255,255,255,0.8);">{{ k.kontakt }}</span>{% endif %}
-        {% if k.email %} · {{ k.email }}{% endif %}
-        {% if k.telefon %} · {{ k.telefon }}{% endif %}
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:6px;">
+          <a href="{{ url_for('main.prehled') }}" style="color:rgba(255,255,255,0.4);text-decoration:none;">← Přehled</a>
+        </div>
+        <div class="kd-nazev">{{ k.nazev }}</div>
+        <div class="kd-sub">
+          {% if k.kontakt %}<span style="color:rgba(255,255,255,0.8);">{{ k.kontakt }}</span>{% endif %}
+          {% if k.email %} · {{ k.email }}{% endif %}
+          {% if k.telefon %} · {{ k.telefon }}{% endif %}
+        </div>
       </div>
     </div>
     <div class="kd-header-actions">
@@ -413,6 +437,77 @@
         {% else %}–{% endif %}
       </div>
       <div class="kd-stat-label">Skóre skladu<span class="kd-stat-sub">poslední audit</span></div>
+    </div>
+  </div>
+
+  <!-- PROFIL SKLADU — dlaždice nad dvěma sloupci -->
+  <div class="kd-card" style="margin-bottom:1.25rem;" id="profil-card">
+    <div class="kd-card-head" style="display:flex;justify-content:space-between;align-items:center;">
+      <h2>Profil skladu</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span style="font-size:10px;color:var(--muted);font-style:italic;" id="profil-auto-hint">{% if profil %}Automaticky aktualizováno ze zápisů{% endif %}</span>
+        <button onclick="toggleProfilEdit()" class="btn btn-secondary btn-sm" id="profil-edit-btn">✎ Upravit</button>
+      </div>
+    </div>
+    <div class="kd-card-body" style="padding:16px;">
+
+      {# Definice dlaždic — label, klíč, typ, možnosti #}
+      {% set TILES = [
+        ('Typ skladu',         'typ_skladu',             'select', ['distribuční','výrobní','e-commerce','komisionální','cross-dock','smíšený','jiný']),
+        ('Počet SKU',          'pocet_sku',              'select', ['do 500','500–2 000','2–10 000','10–50 000','50k+']),
+        ('Počet zaměstnanců',  'pocet_zamestnanci',      'select', ['1–5','6–15','16–30','31–60','60+']),
+        ('Počet směn',         'pocet_smen',             'select', ['1','2','3']),
+        ('Metody pickingu',    'metody_pickingu',        'select', ['single order','batch picking','zone picking','wave picking','smíšené']),
+        ('WMS systém',         'wms_system',             'text',   []),
+        ('Denní expedice',     'prumerna_denni_expedice','select', ['do 50','50–200','200–500','500–1 000','1 000+']),
+        ('Plocha skladu',      'plocha_skladu',          'select', ['do 500 m²','500–1 500 m²','1 500–5 000 m²','5 000–15 000 m²','15 000+ m²']),
+        ('Automatizace',       'automatizace',           'select', ['manuální','částečně automatizovaný','plně automatizovaný']),
+        ('Stav systémů',       'stav_systemu',           'select', ['bez WMS','základní WMS','pokročilý WMS','WMS+ERP integrace']),
+      ] %}
+
+      <!-- READ MODE -->
+      <div id="profil-read-tiles" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+        {% for label, key, typ, opts in TILES %}
+        {% set val = profil.get(key, '') if profil else '' %}
+        <div style="background:#f7f9fb;border:1.5px solid {% if val %}#c8d8ee{% else %}var(--border){% endif %};border-radius:8px;padding:12px 14px;min-height:72px;">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#8aa0b8;margin-bottom:5px;">{{ label }}</div>
+          <div style="font-size:13px;font-weight:700;color:{% if val %}#173767{% else %}#c5d0de{% endif %};">
+            {{ val if val else '—' }}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- EDIT MODE -->
+      <div id="profil-edit-tiles" style="display:none;">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px;">
+          {% for label, key, typ, opts in TILES %}
+          {% set val = profil.get(key, '') if profil else '' %}
+          <div style="background:#f7f9fb;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#8aa0b8;margin-bottom:5px;">{{ label }}</div>
+            {% if typ == 'select' %}
+            <select name="{{ key }}" id="profil-{{ key }}" style="width:100%;padding:5px 6px;border:1.5px solid var(--border);border-radius:4px;font-size:12px;font-family:inherit;background:white;color:#173767;">
+              <option value="">— vybrat —</option>
+              {% for opt in opts %}
+              <option value="{{ opt }}" {% if val == opt %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+              {% if val and val not in opts %}
+              <option value="{{ val }}" selected>{{ val }}</option>
+              {% endif %}
+            </select>
+            {% else %}
+            <input type="text" name="{{ key }}" id="profil-{{ key }}" value="{{ val }}" placeholder="vyplnit..."
+                   style="width:100%;padding:5px 6px;border:1.5px solid var(--border);border-radius:4px;font-size:12px;box-sizing:border-box;background:white;color:#173767;">
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="saveProfilTiles()" class="btn btn-navy btn-sm">Uložit profil</button>
+          <button onclick="toggleProfilEdit()" class="btn btn-secondary btn-sm">Zrušit</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -456,6 +551,59 @@
         </div>
       </div>
 
+      <!-- KONTAKTNÍ OSOBY -->
+      <div class="kd-card" id="kontakty-card">
+        <div class="kd-card-head" style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>Kontaktní osoby</h2>
+          <button onclick="openKontaktForm()" class="btn btn-navy btn-sm">+ Přidat osobu</button>
+        </div>
+        <div class="kd-card-body" style="padding:0;" id="kontakty-list">
+          {% if k.kontakty %}
+            {% for c in k.kontakty %}
+            <div class="kontakt-row" id="kontakt-{{ c.id }}" style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;">
+              <div style="flex:1;">
+                <div style="font-weight:700;color:#173767;font-size:13px;">{{ c.jmeno }}</div>
+                {% if c.pozice %}<div style="font-size:11px;color:#00AFF0;font-weight:600;margin-top:1px;">{{ c.pozice }}</div>{% endif %}
+                <div style="font-size:11px;color:#4A6080;margin-top:3px;display:flex;gap:12px;flex-wrap:wrap;">
+                  {% if c.email %}<span>✉ {{ c.email }}</span>{% endif %}
+                  {% if c.telefon %}<span>📞 {{ c.telefon }}</span>{% endif %}
+                  {% if c.poznamka %}<span style="font-style:italic;">{{ c.poznamka }}</span>{% endif %}
+                </div>
+              </div>
+              <div style="display:flex;gap:4px;flex-shrink:0;">
+                <button onclick="editKontakt({{ c.id }},'{{ c.jmeno|replace("'","\\'") }}','{{ c.pozice|replace("'","\\'") }}','{{ c.email }}','{{ c.telefon }}','{{ c.poznamka|replace("'","\\'") }}')"
+                        style="background:none;border:1.5px solid var(--border);border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;color:#4A6080;">✎</button>
+                <button onclick="smazatKontakt({{ c.id }})"
+                        style="background:none;border:1.5px solid #ffd0d0;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;color:#C0392B;">✕</button>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div id="kontakty-empty" style="padding:16px;font-size:13px;color:#8aa0b8;font-style:italic;text-align:center;">Žádné kontaktní osoby. Klikněte na + Přidat osobu.</div>
+          {% endif %}
+        </div>
+        <!-- Formulář přidání/editace -->
+        <div id="kontakt-form" style="display:none;padding:14px 16px;border-top:2px solid #00AFF0;background:#f7f9fb;">
+          <input type="hidden" id="kontakt-edit-id" value="">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div><label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#4A6080;display:block;margin-bottom:3px;">Jméno *</label>
+              <input id="k-jmeno" type="text" placeholder="Jana Nováková" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;box-sizing:border-box;"></div>
+            <div><label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#4A6080;display:block;margin-bottom:3px;">Pozice</label>
+              <input id="k-pozice" type="text" placeholder="Vedoucí logistiky" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;box-sizing:border-box;"></div>
+            <div><label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#4A6080;display:block;margin-bottom:3px;">E-mail</label>
+              <input id="k-email" type="email" placeholder="jana@firma.cz" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;box-sizing:border-box;"></div>
+            <div><label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#4A6080;display:block;margin-bottom:3px;">Telefon</label>
+              <input id="k-telefon" type="text" placeholder="+420 123 456 789" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;box-sizing:border-box;"></div>
+            <div style="grid-column:1/-1;"><label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#4A6080;display:block;margin-bottom:3px;">Poznámka</label>
+              <input id="k-poznamka" type="text" placeholder="např. primární kontakt pro obchod" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;box-sizing:border-box;"></div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="ulozitKontakt()" class="btn btn-navy btn-sm">Uložit</button>
+            <button onclick="closeKontaktForm()" class="btn btn-secondary btn-sm">Zrušit</button>
+          </div>
+        </div>
+      </div>
+
       <!-- POZNÁMKY -->
       <div class="kd-card">
         <div class="kd-card-head"><h2>Poznámky</h2></div>
@@ -465,67 +613,6 @@
             <button onclick="savePoznamky()" class="btn btn-navy btn-sm">Uložit</button>
             <span id="pozn-status" style="font-size:11px;color:var(--muted);"></span>
           </div>
-        </div>
-      </div>
-
-      <!-- PROFIL SKLADU -->
-      <div class="kd-card">
-        <div class="kd-card-head">
-          <h2>Profil skladu</h2>
-          <button onclick="toggleProfil()" class="btn btn-secondary btn-sm" id="profil-btn">{% if profil %}✎ Upravit{% else %}+ Přidat{% endif %}</button>
-        </div>
-        <div class="kd-card-body">
-          <div id="profil-read">
-            {% if profil %}
-            <div class="profil-grid">
-              {% for k2, v in profil.items() if not k2.startswith('_') %}
-              <div class="profil-item">
-                <div class="profil-item-key">{{ k2 | replace('_', ' ') }}</div>
-                <div class="profil-item-val">{{ v }}</div>
-              </div>
-              {% endfor %}
-            </div>
-            {% else %}
-            <div style="font-size:13px;color:var(--muted);font-style:italic;padding:4px 0;">Profil skladu není vyplněn. Klikněte na + Přidat nebo vygenerujte zápis — profil se doplní automaticky.</div>
-            {% endif %}
-          </div>
-          <form id="profil-edit" style="display:none;" onsubmit="saveProfil(event)">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;" id="profil-fields">
-            {% if profil %}
-              {% for k2, v in profil.items() if not k2.startswith('_') %}
-              <div class="edit-field" style="{% if v|length > 40 %}grid-column:1/-1;{% endif %}">
-                <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);display:block;margin-bottom:3px;">{{ k2 | replace('_', ' ') }}</label>
-                {% if v|length > 40 %}
-                <textarea name="{{ k2 }}" rows="2" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;font-family:inherit;resize:vertical;">{{ v }}</textarea>
-                {% else %}
-                <input name="{{ k2 }}" value="{{ v }}" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;">
-                {% endif %}
-              </div>
-              {% endfor %}
-            {% else %}
-              <div class="edit-field" style="grid-column:1/-1;">
-                <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);display:block;margin-bottom:3px;">Typ skladu</label>
-                <input name="typ_skladu" placeholder="např. distribuční, výrobní..." style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;">
-              </div>
-              <div class="edit-field" style="grid-column:1/-1;">
-                <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);display:block;margin-bottom:3px;">Hlavní problémy</label>
-                <textarea name="hlavni_problemy" rows="2" placeholder="Popis hlavních problémů..." style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
-              </div>
-              <div class="edit-field">
-                <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);display:block;margin-bottom:3px;">Počet SKU</label>
-                <input name="pocet_sku" placeholder="např. 5 000" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;">
-              </div>
-              <div class="edit-field">
-                <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);display:block;margin-bottom:3px;">WMS systém</label>
-                <input name="wms_system" placeholder="např. SAP, Helios..." style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:4px;font-size:13px;">
-              </div>
-            {% endif %}
-            </div>
-            <div style="display:flex;gap:8px;margin-top:4px;">
-              <button type="submit" class="btn btn-navy btn-sm">Uložit profil</button>
-              <button type="button" onclick="toggleProfil()" class="btn btn-secondary btn-sm">Zrušit</button>
-            </div>
-          </form>
         </div>
       </div>
 
@@ -809,22 +896,31 @@ async function savePoznamky() {
 }
 document.getElementById('poznamky-text').addEventListener('blur', savePoznamky);
 
-function toggleProfil() {
-  const r = document.getElementById('profil-read'), e = document.getElementById('profil-edit');
-  if (!r || !e) return;
-  const editing = e.style.display !== 'none';
-  r.style.display = editing ? 'block' : 'none';
-  e.style.display = editing ? 'none' : 'block';
-  document.getElementById('profil-btn').textContent = editing ? '✎ Upravit' : 'Zrušit';
+function toggleProfilEdit() {
+  const read = document.getElementById('profil-read-tiles');
+  const edit = document.getElementById('profil-edit-tiles');
+  const btn  = document.getElementById('profil-edit-btn');
+  const editing = edit.style.display !== 'none';
+  read.style.display = editing ? 'grid' : 'none';
+  edit.style.display = editing ? 'none' : 'block';
+  btn.textContent = editing ? '✎ Upravit' : 'Zrušit';
 }
 
-async function saveProfil(ev) {
-  ev.preventDefault();
-  const profil = Object.fromEntries(new FormData(ev.target));
+async function saveProfilTiles() {
+  const keys = ['typ_skladu','pocet_sku','pocet_zamestnanci','pocet_smen','metody_pickingu',
+                 'wms_system','prumerna_denni_expedice','plocha_skladu','automatizace','stav_systemu'];
+  const profil = {};
+  keys.forEach(k => {
+    const el = document.getElementById('profil-' + k);
+    if (el && el.value.trim()) profil[k] = el.value.trim();
+  });
   try {
-    const r = await fetch(`/api/klient/${KLIENT_ID}/profil`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ profil }) });
+    const r = await fetch(`/api/klient/${KLIENT_ID}/profil`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ profil })
+    });
     const d = await r.json();
-    if (d.ok) { toggleProfil(); toast('Profil skladu uložen'); }
+    if (d.ok) { toggleProfilEdit(); toast('Profil skladu uložen'); setTimeout(() => location.reload(), 600); }
     else toast(d.error || 'Chyba', false);
   } catch(e) { toast('Chyba', false); }
 }
@@ -1456,5 +1552,105 @@ async function flPridatUkol() {
   btn.disabled = false; btn.textContent = 'Přidat do Freela';
 }
 
+// ── KONTAKTNÍ OSOBY ────────────────────────────────────────────────
+function openKontaktForm(clearId) {
+  document.getElementById('kontakt-edit-id').value = '';
+  document.getElementById('k-jmeno').value = '';
+  document.getElementById('k-pozice').value = '';
+  document.getElementById('k-email').value = '';
+  document.getElementById('k-telefon').value = '';
+  document.getElementById('k-poznamka').value = '';
+  document.getElementById('kontakt-form').style.display = 'block';
+  document.getElementById('k-jmeno').focus();
+}
+
+function editKontakt(id, jmeno, pozice, email, telefon, poznamka) {
+  document.getElementById('kontakt-edit-id').value = id;
+  document.getElementById('k-jmeno').value = jmeno;
+  document.getElementById('k-pozice').value = pozice;
+  document.getElementById('k-email').value = email;
+  document.getElementById('k-telefon').value = telefon;
+  document.getElementById('k-poznamka').value = poznamka;
+  document.getElementById('kontakt-form').style.display = 'block';
+  document.getElementById('k-jmeno').focus();
+  document.getElementById('kontakt-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function closeKontaktForm() {
+  document.getElementById('kontakt-form').style.display = 'none';
+}
+
+async function ulozitKontakt() {
+  const jmeno = document.getElementById('k-jmeno').value.trim();
+  if (!jmeno) { toast('Jméno je povinné', false); return; }
+  const editId = document.getElementById('kontakt-edit-id').value;
+  const data = {
+    jmeno, pozice: document.getElementById('k-pozice').value.trim(),
+    email: document.getElementById('k-email').value.trim(),
+    telefon: document.getElementById('k-telefon').value.trim(),
+    poznamka: document.getElementById('k-poznamka').value.trim(),
+  };
+  const url = editId
+    ? `/api/klient/kontakt/${editId}`
+    : `/api/klient/${KLIENT_ID}/kontakty`;
+  try {
+    const r = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    const d = await r.json();
+    if (d.ok) { closeKontaktForm(); toast('Uloženo'); setTimeout(() => location.reload(), 600); }
+    else toast(d.error || 'Chyba', false);
+  } catch(e) { toast('Chyba: ' + e.message, false); }
+}
+
+async function smazatKontakt(id) {
+  if (!confirm('Smazat tuto kontaktní osobu?')) return;
+  try {
+    const r = await fetch(`/api/klient/kontakt/${id}/smazat`, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      const el = document.getElementById('kontakt-' + id);
+      if (el) el.remove();
+      toast('Smazáno');
+    } else toast(d.error || 'Chyba', false);
+  } catch(e) { toast('Chyba', false); }
+}
+// ── END KONTAKTNÍ OSOBY ─────────────────────────────────────────────
+
+async function uploadLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('logo-upload-status');
+  status.textContent = 'Nahrávám…';
+  const fd = new FormData();
+  fd.append('logo', file);
+  try {
+    const r = await fetch(`/api/klient/${KLIENT_ID}/logo`, { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.ok) {
+      status.textContent = '✓';
+      // Aktualizuj logo v headeru bez reloadu
+      let img = document.getElementById('klient-logo-img');
+      const ph = document.getElementById('logo-placeholder');
+      if (!img) {
+        img = document.createElement('img');
+        img.id = 'klient-logo-img';
+        img.style = 'height:48px;max-width:120px;object-fit:contain;border-radius:6px;background:white;padding:4px 8px;cursor:pointer;';
+        img.title = 'Klikněte pro změnu loga';
+        img.onclick = () => document.getElementById('logo-upload-input').click();
+        ph.parentNode.insertBefore(img, ph);
+      }
+      img.src = d.logo_url;
+      img.style.display = 'block';
+      if (ph) ph.style.display = 'none';
+      toast('Logo uloženo');
+    } else {
+      status.textContent = '';
+      toast(d.error || 'Chyba při nahrání loga', false);
+    }
+  } catch(e) {
+    status.textContent = '';
+    toast('Chyba: ' + e.message, false);
+  }
+  input.value = '';
+}
 </script>
 {% endblock %}

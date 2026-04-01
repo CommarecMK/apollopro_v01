@@ -11,7 +11,7 @@ class Klient(db.Model):
     id          = db.Column(db.Integer, primary_key=True)
     nazev       = db.Column(db.String(200), nullable=False)
     slug        = db.Column(db.String(200), unique=True, nullable=False)
-    kontakt     = db.Column(db.String(200), default="")   # hlavni kontaktni osoba
+    kontakt     = db.Column(db.String(200), default="")   # hlavni kontaktni osoba (legacy)
     email       = db.Column(db.String(200), default="")
     telefon     = db.Column(db.String(60),  default="")
     adresa      = db.Column(db.String(300), default="")
@@ -27,6 +27,23 @@ class Klient(db.Model):
     freelo_tasklist_id   = db.Column(db.Integer, nullable=True)   # Freelo tasklist ID per klient
     projekty    = db.relationship("Projekt", back_populates="klient", lazy=True, cascade="all, delete-orphan")
     zapisy      = db.relationship("Zapis", lazy=True, foreign_keys="Zapis.klient_id", viewonly=True)
+    kontakty    = db.relationship("KlientKontakt", back_populates="klient", lazy=True,
+                                  cascade="all, delete-orphan", order_by="KlientKontakt.poradi")
+
+
+class KlientKontakt(db.Model):
+    """Kontaktní osoby klienta — více osob s pozicí, emailem, telefonem."""
+    __tablename__ = "klient_kontakt"
+    id          = db.Column(db.Integer, primary_key=True)
+    klient_id   = db.Column(db.Integer, db.ForeignKey("klient.id"), nullable=False)
+    jmeno       = db.Column(db.String(200), nullable=False)
+    pozice      = db.Column(db.String(200), default="")
+    email       = db.Column(db.String(200), default="")
+    telefon     = db.Column(db.String(60),  default="")
+    poznamka    = db.Column(db.String(300), default="")
+    poradi      = db.Column(db.Integer, default=0)
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    klient      = db.relationship("Klient", back_populates="kontakty")
 
 
 class TemplateConfig(db.Model):

@@ -178,6 +178,88 @@ def api_klient_info(klient_id):
     })
 
 
+@bp.route("/api/klient/<int:klient_id>/logo", methods=["POST"])
+@login_required
+def api_klient_logo(klient_id):
+    """Upload loga klienta — uloží jako base64 data URL do DB."""
+    k = Klient.query.get_or_404(klient_id)
+    logo_url = save_klient_logo(request.files.get('logo'), klient_id)
+    if not logo_url:
+        return jsonify({"error": "Nepodporovaný formát nebo příliš velký soubor (max 2 MB)"}), 400
+    try:
+        db.session.expire_all()
+        k.logo_url = logo_url
+        db.session.commit()
+        return jsonify({"ok": True, "logo_url": logo_url})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/klient/<int:klient_id>/kontakty", methods=["GET"])
+@login_required
+def api_klient_kontakty(klient_id):
+    """Vrátí seznam kontaktních osob klienta."""
+    from ..models import KlientKontakt
+    k = Klient.query.get_or_404(klient_id)
+    return jsonify({"kontakty": [
+        {"id": c.id, "jmeno": c.jmeno, "pozice": c.pozice,
+         "email": c.email, "telefon": c.telefon, "poznamka": c.poznamka}
+        for c in k.kontakty
+    ]})
+
+
+@bp.route("/api/klient/<int:klient_id>/kontakty", methods=["POST"])
+@login_required
+def api_klient_kontakt_pridat(klient_id):
+    """Přidá novou kontaktní osobu ke klientovi."""
+    from ..models import KlientKontakt
+    Klient.query.get_or_404(klient_id)
+    data = request.json or {}
+    jmeno = (data.get("jmeno") or "").strip()
+    if not jmeno:
+        return jsonify({"error": "Jméno je povinné"}), 400
+    from ..models import KlientKontakt
+    k_kontakt = KlientKontakt(
+        klient_id=klient_id,
+        jmeno=jmeno,
+        pozice=(data.get("pozice") or "").strip(),
+        email=(data.get("email") or "").strip(),
+        telefon=(data.get("telefon") or "").strip(),
+        poznamka=(data.get("poznamka") or "").strip(),
+    )
+    db.session.add(k_kontakt)
+    db.session.commit()
+    return jsonify({"ok": True, "id": k_kontakt.id})
+
+
+@bp.route("/api/klient/kontakt/<int:kontakt_id>", methods=["POST"])
+@login_required
+def api_klient_kontakt_upravit(kontakt_id):
+    """Upraví existující kontaktní osobu."""
+    from ..models import KlientKontakt
+    c = KlientKontakt.query.get_or_404(kontakt_id)
+    data = request.json or {}
+    c.jmeno   = (data.get("jmeno") or c.jmeno).strip()
+    c.pozice  = (data.get("pozice") or "").strip()
+    c.email   = (data.get("email") or "").strip()
+    c.telefon = (data.get("telefon") or "").strip()
+    c.poznamka= (data.get("poznamka") or "").strip()
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@bp.route("/api/klient/kontakt/<int:kontakt_id>/smazat", methods=["POST"])
+@login_required
+def api_klient_kontakt_smazat(kontakt_id):
+    """Smaže kontaktní osobu."""
+    from ..models import KlientKontakt
+    c = KlientKontakt.query.get_or_404(kontakt_id)
+    db.session.delete(c)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @bp.route("/projekt/novy", methods=["POST"])
 @login_required
 def projekt_novy():
