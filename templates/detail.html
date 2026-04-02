@@ -52,37 +52,23 @@
     color: #8aa0b8;
   }
 
-  /* ── Hero header — zachovej barvy ── */
-  .zapis-meta {
+  /* ── Hero header ── */
+  .zapis-meta, .meta-hero {
+    background: #173767 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    color-adjust: exact !important;
-    background: #173767 !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
-    page-break-inside: avoid;
   }
+  .zapis-meta *, .meta-hero * { position: static !important; }
+  .zapis-meta::before, .zapis-meta::after,
+  .meta-hero::before, .meta-hero::after { display: none !important; content: none !important; }
   .meta-logo-bar {
     background: white !important;
+    border-bottom: 2pt solid #00AFF0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  .meta-hero {
-    padding: 14pt 20pt !important;
-    background: #173767 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  .zapis-meta-title {
-    color: white !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  .zapis-meta-subtitle {
-    color: #00AFF0 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
+  .zapis-meta-title { color: white !important; font-size: 20pt !important; margin-bottom: 6pt !important; }
+  .zapis-meta-subtitle { color: #00AFF0 !important; font-size: 9pt !important; }
 
   /* ── Nadpis zápisu ── */
   .zapis-meta-title {
@@ -210,20 +196,19 @@
   .interni-instrukce { display: none !important; }
 } 
 /* === HEADER — Figma vzor === */
-.zapis-meta{background:#173767;padding:0;display:flex;flex-direction:column;position:relative;overflow:hidden;}
+.zapis-meta{background:#173767;padding:0;display:flex;flex-direction:column;}
 /* Bílý pruh s logy — přes celou šířku */
-.meta-logo-bar{background:white;padding:0 2.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:none;}
-.meta-logo-dark{height:24px;width:auto;display:block;flex-shrink:0;}
-.meta-logos-left{display:flex;align-items:center;gap:16px;}
-.meta-plus{color:#c0cad8;font-size:20px;font-weight:300;line-height:1;flex-shrink:0;}
-.meta-klient-logo-img{height:26px;max-width:140px;width:auto;object-fit:contain;display:block;}
+.meta-logo-bar{background:white;padding:0 2rem;height:52px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #00AFF0;}
+.meta-logo-dark{height:22px;width:auto;display:block;flex-shrink:0;}
+.meta-logos-left{display:flex;align-items:center;gap:14px;}
+.meta-plus{color:#c0cad8;font-size:18px;font-weight:300;line-height:1;flex-shrink:0;}
+.meta-klient-logo-img{height:24px;max-width:120px;width:auto;object-fit:contain;display:block;}
 .meta-klient-name{font-family:"Montserrat",sans-serif;font-size:13px;font-weight:700;color:#173767;letter-spacing:0.02em;white-space:nowrap;}
 .meta-bar-right{font-family:"Montserrat",sans-serif;font-size:10px;font-weight:600;color:#8aa0b8;letter-spacing:0.12em;text-transform:uppercase;white-space:nowrap;}
-/* Tmavý hero blok s nadpisem */
-.meta-hero{padding:2rem 2.5rem 2.5rem;position:relative;flex:1;}
-.meta-hero::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 85% 50%,rgba(0,175,240,0.08) 0%,transparent 60%);pointer-events:none;}
-.zapis-meta-title{font-family:"Montserrat",sans-serif;font-weight:800;font-size:28px;color:white;letter-spacing:0.01em;line-height:1.2;margin-bottom:12px;position:relative;z-index:1;}
-.zapis-meta-subtitle{font-family:"Montserrat",sans-serif;font-size:12px;font-weight:700;color:#00AFF0;text-transform:uppercase;letter-spacing:0.15em;position:relative;z-index:1;}
+/* Hero blok — čistý navy */
+.meta-hero{padding:1.75rem 2rem 2rem;background:#173767;}
+.zapis-meta-title{font-family:"Montserrat",sans-serif;font-weight:900;font-size:26px;color:white;letter-spacing:0.01em;line-height:1.2;margin-bottom:10px;}
+.zapis-meta-subtitle{font-family:"Montserrat",sans-serif;font-size:11px;font-weight:700;color:#00AFF0;text-transform:uppercase;letter-spacing:0.15em;}
 .zapis-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;} .meta-row{font-size:11px;color:rgba(255,255,255,0.5);font-weight:500;line-height:2.2;} .meta-row strong{color:white;} .meta-badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 10px;border-radius:3px;letter-spacing:0.06em;text-transform:uppercase;background:rgba(0,175,240,0.2);color:#00AFF0;border:1px solid rgba(0,175,240,0.3);margin-top:6px;} /* HEADER INFO */ .zapis-header-block{background:#f7f9fb;border-bottom:2px solid var(--border);padding:0;display:grid;grid-template-columns:repeat(4,1fr);} .hb-item{padding:14px 20px;border-right:1px solid var(--border);} .hb-item:last-child{border-right:none;} .hb-lbl{font-size:9px;font-weight:700;color:#8aa0b8;text-transform:uppercase;letter-spacing:0.12em;display:block;margin-bottom:3px;} .hb-val{font-size:13px;font-weight:700;color:#173767;display:flex;align-items:center;gap:6px;} /* BODY */ .zapis-body{padding:2rem;} /* SECTIONS */ .zapis-section{margin-bottom:3rem;padding-top:4px;} .section-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:3px solid #00AFF0;margin-bottom:20px;margin-top:8px;} .section-title{
   font-family:'Montserrat',sans-serif;
   font-size:18px;
