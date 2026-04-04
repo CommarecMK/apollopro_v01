@@ -1,104 +1,26 @@
-"""routes/admin.py"""
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, abort, current_app
-from datetime import datetime, timedelta
-from werkzeug.security import generate_password_hash, check_password_hash
-from ..extensions import db, ANTHROPIC_API_KEY, FREELO_API_KEY, FREELO_EMAIL, FREELO_PROJECT_ID
-from ..models import User, Klient, Zapis, Projekt, Nabidka, NabidkaPolozka, TemplateConfig
-from ..auth import login_required, admin_required, role_required, get_current_user, can
-from ..config import TEMPLATE_PROMPTS, TEMPLATE_NAMES, TEMPLATE_SECTIONS, SECTION_TITLES
-from ..services.freelo import freelo_get, freelo_post, freelo_patch, freelo_delete, resolve_worker_id, find_project_id_for_tasklist
-import os, json, re, secrets, string
-import anthropic
-import requests
+"""routes/admin.py — CRM admin: šablony zápisů, klienti, Freelo diagnostika."""
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
+from ..extensions import db
+from ..models import Klient, Zapis, TemplateConfig
+from ..auth import admin_required
+from ..config import TEMPLATE_PROMPTS, TEMPLATE_NAMES, TEMPLATE_SECTIONS
 
-import random
 bp = Blueprint("admin_bp", __name__)
+
 
 @bp.route("/admin")
 @admin_required
 def admin():
-    users   = User.query.order_by(User.name).all()
     klienti = Klient.query.order_by(Klient.nazev).all()
-    flash   = session.pop("admin_flash", None)
-    # Data šablon — pro inline blok
+    flash = session.pop("admin_flash", None)
     tmpl_configs = {}
     for key in TEMPLATE_PROMPTS:
         cfg = TemplateConfig.query.filter_by(template_key=key).first()
         tmpl_configs[key] = cfg
-    return render_template("admin.html", users=users, klienti=klienti, admin_flash=flash,
+    return render_template("admin.html", klienti=klienti, admin_flash=flash,
                            template_names=TEMPLATE_NAMES, tmpl_configs=tmpl_configs,
                            tmpl_sections=TEMPLATE_SECTIONS, tmpl_default_prompts=TEMPLATE_PROMPTS)
 
-@bp.route("/admin/pridat-uzivatele", methods=["POST"])
-@admin_required
-def pridat_uzivatele():
-    email     = request.form.get("email","").strip().lower()
-    name      = request.form.get("name","").strip()
-    role      = request.form.get("role","konzultant")
-    klient_id = request.form.get("klient_id", type=int) or None
-    is_admin  = role in ("superadmin", "admin")
-    if not email or not name:
-        return redirect(url_for("admin_bp.admin"))
-    if User.query.filter_by(email=email).first():
-        session["admin_flash"] = f"Email {email} už existuje."
-        return redirect(url_for("admin_bp.admin"))
-
-    # Heslo — použij zadané nebo vygeneruj automaticky
-    custom_password = request.form.get("password", "").strip()
-    if custom_password:
-        password = custom_password
-        password_display = "(zadáno ručně)"
-    else:
-        import random
-        words = ["Sklad", "Logistika", "Picking", "Trasa", "Expres", "Projekt", "Audit"]
-        password = random.choice(words) + str(random.randint(10,99)) + random.choice(words) + "!"
-        password_display = password
-
-    u = User(email=email, name=name, role=role, is_admin=is_admin,
-             klient_id=klient_id if role == "klient" else None,
-             password_hash=generate_password_hash(password))
-
-    # Freelo — ulož pokud vyplněno
-    freelo_email = request.form.get("freelo_email", "").strip()
-    freelo_api_key = request.form.get("freelo_api_key", "").strip()
-    if freelo_email:
-        u.freelo_email = freelo_email
-    if freelo_api_key:
-        u.freelo_api_key = freelo_api_key
-
-    db.session.add(u)
-    db.session.commit()
-    if custom_password:
-        session["admin_flash"] = f"Uživatel {name} vytvořen s vlastním heslem."
-    else:
-        session["admin_flash"] = f"Uživatel {name} vytvořen. Heslo: {password_display}"
-    return redirect(url_for("admin_bp.admin"))
-
-@bp.route("/admin/upravit-uzivatele/<int:user_id>", methods=["POST"])
-@admin_required
-def upravit_uzivatele(user_id):
-    user = User.query.get_or_404(user_id)
-    user.name      = request.form.get("name", user.name).strip()
-    user.role      = request.form.get("role", user.role)
-    user.is_admin  = user.role in ("superadmin", "admin")
-    user.is_active = bool(request.form.get("is_active"))
-    klient_id      = request.form.get("klient_id", type=int) or None
-    user.klient_id = klient_id if user.role == "klient" else None
-    if request.form.get("password"):
-        user.password_hash = generate_password_hash(request.form["password"])
-    # Freelo API credentials
-    freelo_email = request.form.get("freelo_email", "").strip()
-    freelo_api_key = request.form.get("freelo_api_key", "").strip()
-    if freelo_email:
-        user.freelo_email = freelo_email
-    if freelo_api_key and freelo_api_key != "••••••••":
-        user.freelo_api_key = freelo_api_key
-    # Smazání credentials pokud uživatel odeslal prázdné pole (explicitní vymazání)
-    if request.form.get("clear_freelo"):
-        user.freelo_email = None
-        user.freelo_api_key = None
-    db.session.commit()
-    return redirect(url_for("admin_bp.admin"))
 
 @bp.route("/admin/templates", methods=["GET"])
 @admin_required
@@ -139,29 +61,3 @@ def admin_template_reset(template_key):
         cfg.system_prompt = ""
         db.session.commit()
     return jsonify({"ok": True, "msg": "Resetováno na výchozí"})
-
-
-@bp.route("/admin/smazat-uzivatele/<int:user_id>", methods=["POST"])
-@admin_required
-def smazat_uzivatele(user_id):
-    if user_id == session["user_id"]:
-        return redirect(url_for("admin_bp.admin"))  # nelze smazat sám sebe
-    user = User.query.get_or_404(user_id)
-    # Nelze smazat superadmina
-    if user.role == "superadmin":
-        return redirect(url_for("admin_bp.admin"))
-    # Přeřaď zápisy na admina před smazáním
-    admin_user = User.query.filter_by(role="superadmin").first()
-    if admin_user:
-        Zapis.query.filter_by(user_id=user_id).update({"user_id": admin_user.id})
-        db.session.flush()
-    db.session.delete(user)
-    db.session.commit()
-    session["admin_flash"] = f"Uživatel {user.name} byl smazán."
-    return redirect(url_for("admin_bp.admin"))
-
-# ─────────────────────────────────────────────
-# DB INIT + AUTO-MIGRATE
-# ─────────────────────────────────────────────
-
-
