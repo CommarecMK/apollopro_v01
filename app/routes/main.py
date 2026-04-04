@@ -46,7 +46,8 @@ def home():
 
     pozor_klienti = []
     for k in klienti_all:
-        posledni = Zapis.query.filter_by(klient_id=k.id)            .order_by(Zapis.created_at.desc()).first()
+        posledni = Zapis.query.filter_by(klient_id=k.id)\
+            .order_by(Zapis.created_at.desc()).first()
         if not posledni or posledni.created_at < cutoff_60:
             dni = (now - posledni.created_at).days if posledni else 999
             if dni > 60:
@@ -78,7 +79,9 @@ def home():
     aktivita.sort(key=lambda x: x["datum"], reverse=True)
     aktivita = aktivita[:15]
 
-    aktivni_projekty = Projekt.query.filter_by(is_active=True)        .order_by(db.case((Projekt.datum_do == None, 1), else_=0), Projekt.datum_do.asc())        .limit(8).all()
+    aktivni_projekty = Projekt.query.filter_by(is_active=True)\
+        .order_by(db.case((Projekt.datum_do == None, 1), else_=0), Projekt.datum_do.asc())\
+        .limit(8).all()
 
     current_user = User.query.get(session["user_id"])
 
@@ -92,7 +95,7 @@ def home():
 @bp.route("/")
 def index():
     if "user_id" in session:
-        return redirect(url_for("main.home"))
+        return redirect(url_for("main.portal"))
     return redirect(url_for("main.login"))
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -107,7 +110,7 @@ def login():
             session["user_name"] = user.name
             session["is_admin"]  = user.is_admin
             session["user_role"] = user.role
-            return redirect(url_for("main.home"))
+            return redirect(url_for("main.portal"))  # ← změněno z main.home na main.portal
         error = "Nespravny e-mail nebo heslo."
     return render_template("login.html", error=error)
 
@@ -123,6 +126,69 @@ def logout():
             pass
     session.clear()
     return redirect(url_for("main.login"))
+
+
+# ─────────────────────────────────────────────
+# PORTAL — ROZCESTNÍK APLIKACÍ
+# ─────────────────────────────────────────────
+
+@bp.route("/portal")
+@login_required
+def portal():
+    """Hlavní rozcestník — dlaždice pro všechny aplikace."""
+    from ..sso import vytvor_token
+    user = get_current_user()
+
+    kb_url = os.environ.get("KB_URL", "https://kb.superskladnik.cz")
+    token = vytvor_token(user.id, user.name, user.role)
+
+    aplikace = [
+        {
+            "nazev": "CRM Superskladník",
+            "popis": "Klienti, projekty, zápisy, nabídky",
+            "ikona": "crm",
+            "url": url_for("main.home"),
+            "barva": "modra",
+        },
+        {
+            "nazev": "Knowledge Base",
+            "popis": "Znalostní databáze, dokumenty, AI analýzy",
+            "ikona": "kb",
+            "url": f"{kb_url}/auth?token={token}",
+            "barva": "zelena",
+        },
+    ]
+
+    return render_template("portal_main.html", aplikace=aplikace, current_user=user)
+
+
+
+
+# ─────────────────────────────────────────────
+# SSO VSTUP — příchod z Portálu (apollopro.io)
+# ─────────────────────────────────────────────
+
+@bp.route("/auth")
+def sso_vstup():
+    """Přijme SSO token z portálu a přihlásí uživatele do CRM."""
+    from ..sso import over_token
+    token = request.args.get("token", "")
+    uzivatel = over_token(token)
+
+    if not uzivatel:
+        portal_url = os.environ.get("PORTAL_URL", "https://apollopro.io")
+        return redirect(portal_url + "/login")
+
+    user = User.query.get(uzivatel["id"])
+    if not user or not user.is_active:
+        portal_url = os.environ.get("PORTAL_URL", "https://apollopro.io")
+        return redirect(portal_url + "/login")
+
+    session["user_id"]   = user.id
+    session["user_name"] = user.name
+    session["is_admin"]  = user.is_admin
+    session["user_role"] = user.role
+    return redirect(url_for("main.home"))
 
 # ─────────────────────────────────────────────
 # PRESENCE API
@@ -423,7 +489,8 @@ def progress_report():
             ).order_by(Zapis.created_at.desc()).all()
 
             # Všechny zápisy projektu pro kontext
-            vsechny_zapisy = Zapis.query.filter_by(projekt_id=p.id)                .order_by(Zapis.created_at.desc()).all()
+            vsechny_zapisy = Zapis.query.filter_by(projekt_id=p.id)\
+                .order_by(Zapis.created_at.desc()).all()
 
             # Úkoly ze zápisů (tasks_json)
             ukoly_splnene = []
