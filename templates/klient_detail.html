@@ -415,17 +415,14 @@
       </div>
     </div>
     <div class="kd-header-actions">
-      <button id="btn-merk-hdr" onclick="document.getElementById('ai-panel').dataset.autoopen='1';document.getElementById('ai-panel').style.display='block'" class="btn-hdr" style="background:rgba(6,182,212,.2);color:#06b6d4;">🔍 Dohledat Merk</button>
       <button id="btn-merk" onclick="spustitMerkKlient()" class="btn-hdr" style="background:rgba(6,182,212,.2);color:#06b6d4;border:1px solid #06b6d4;cursor:pointer;">🔍 Dohledat Merk</button>
       <a href="{{ url_for('zapisy.novy_zapis') }}?klient_id={{ k.id }}" class="btn-hdr cyan">+ Nový zápis</a>
       <a href="{{ url_for('nabidky.nabidka_nova') }}?klient_id={{ k.id }}" class="btn-hdr orange">+ Nabídka</a>
     </div>
   </div>
 
-  <!-- klient meta pro JS -->
   <div id="klient-meta" data-id="{{ k.id }}" data-nazev="{{ k.nazev }}" style="display:none;"></div>
 
-  <!-- Merk panel — přesná kopie z LOE dodavatele -->
   <div id="ai-panel" style="display:none;max-width:900px;margin:0 auto 20px;">
     <div style="background:#fff;border:2px solid #06b6d4;border-radius:12px;padding:20px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
@@ -1734,75 +1731,71 @@ async function uploadLogo(input) {
   input.value = '';
 }
 
-// ── Merk — přesná kopie z LOE dodavatele ─────────────────────────
-var aiData = null;
-var suggestTimer = null;
-var suggestItems = [];
+// ── Merk ─────────────────────────────────────────────────────────────
+var _merkAiData = null;
+var _merkSuggestTimer = null;
+var _merkSuggestItems = [];
 
 function spustitMerkKlient() {
   var btn = document.getElementById('btn-merk');
-  btn.disabled = true; btn.textContent = 'Hledám...';
+  if (btn) { btn.disabled = true; btn.textContent = 'Hledám...'; }
   document.getElementById('ai-panel').style.display = 'block';
   document.getElementById('ai-panel').scrollIntoView({behavior:'smooth', block:'start'});
   var nazev = document.getElementById('klient-meta').dataset.nazev;
   document.getElementById('merk-search-inp').value = nazev;
-  merkNacistDetail(null, nazev).then(function() {
-    btn.disabled = false; btn.textContent = '🔍 Dohledat Merk';
+  _merkNacistDetail(null, nazev).then(function() {
+    if (btn) { btn.disabled = false; btn.textContent = '🔍 Dohledat Merk'; }
   });
 }
 
 function merkSuggestPanel(q) {
-  clearTimeout(suggestTimer);
+  clearTimeout(_merkSuggestTimer);
   var dd = document.getElementById('merk-search-dd');
   if (q.length < 2) { dd.style.display = 'none'; return; }
-  suggestTimer = setTimeout(function() { _suggest(q); }, 300);
+  _merkSuggestTimer = setTimeout(function() { _merkSuggest(q); }, 300);
 }
 
-function _suggest(q) {
+function _merkSuggest(q) {
   var dd = document.getElementById('merk-search-dd');
   fetch('/api/klient/merk/suggest?q=' + encodeURIComponent(q))
     .then(function(r) { return r.json(); })
     .then(function(items) {
-      suggestItems = items;
-      if (!Array.isArray(items) || !items.length) { dd.style.display = 'none'; return; }
+      _merkSuggestItems = Array.isArray(items) ? items : [];
+      if (!_merkSuggestItems.length) { dd.style.display = 'none'; return; }
       var html = '';
-      for (var i = 0; i < items.length; i++) {
-        var it = items[i];
-        html += '<div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #e2e8f0;font-size:13px;" onclick="vybratFirmu(' + i + ')" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">'
+      for (var i = 0; i < _merkSuggestItems.length; i++) {
+        var it = _merkSuggestItems[i];
+        html += '<div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #e2e8f0;font-size:13px;" onclick="_merkVybratFirmu(' + i + ')" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">'
               + '<div style="font-weight:600;">' + (it.nazev || '') + '</div>'
               + '<div style="font-size:11px;color:#64748b;">IČO: ' + (it.ico || '') + ' · ' + (it.adresa || '') + '</div>'
               + '</div>';
       }
       dd.innerHTML = html;
       dd.style.display = 'block';
-    }).catch(function() { dd.style.display = 'none'; });
+    }).catch(function() { document.getElementById('merk-search-dd').style.display = 'none'; });
 }
 
-function vybratFirmu(idx) {
+function _merkVybratFirmu(idx) {
   document.getElementById('merk-search-dd').style.display = 'none';
-  var it = suggestItems[idx];
+  var it = _merkSuggestItems[idx];
   if (!it) return;
   document.getElementById('merk-search-inp').value = it.nazev;
-  merkNacistDetail(it.ico || null, it.nazev);
+  _merkNacistDetail(it.ico || null, it.nazev);
 }
 
 function merkHledat() {
   document.getElementById('merk-search-dd').style.display = 'none';
   var q = document.getElementById('merk-search-inp').value.trim();
   if (!q) return;
-  if (/^[0-9]{6,9}$/.test(q)) {
-    merkNacistDetail(q, null);
-  } else {
-    merkNacistDetail(null, q);
-  }
+  _merkNacistDetail(/^[0-9]{6,9}$/.test(q) ? q : null, q);
 }
 
-function merkNacistDetail(ico, nazev) {
+function _merkNacistDetail(ico, nazev) {
   document.getElementById('ai-loading').style.display = 'block';
   document.getElementById('ai-vysledek').style.display = 'none';
   document.getElementById('btn-ulozit-ai').style.display = 'none';
-
   var kid = document.getElementById('klient-meta').dataset.id;
+
   var promise;
   if (ico) {
     promise = fetch('/api/klient/merk/ico/' + ico).then(function(r) { return r.json(); });
@@ -1810,7 +1803,7 @@ function merkNacistDetail(ico, nazev) {
     promise = fetch('/api/klient/' + kid + '/merk/dohledat', {method:'POST'})
       .then(function(r) { return r.json(); })
       .then(function(resp) {
-        if (resp.ok) { return Object.assign({ok:true}, resp.data); }
+        if (resp.ok) return Object.assign({ok:true}, resp.data);
         return resp;
       });
   }
@@ -1818,13 +1811,11 @@ function merkNacistDetail(ico, nazev) {
   return promise.then(function(data) {
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('ai-vysledek').style.display = 'block';
-
     if (!data.ok) {
-      document.getElementById('ai-vysledek').innerHTML =
-        '<div style="color:#ef4444;font-size:13px;padding:8px 0;">' + (data.error || 'Firma nenalezena.') + '</div>';
+      document.getElementById('ai-vysledek').innerHTML = '<div style="color:#ef4444;font-size:13px;padding:8px 0;">' + (data.error || 'Firma nenalezena.') + '</div>';
       return;
     }
-    aiData = data;
+    _merkAiData = data;
     var rows = [];
     if (data.ico)           rows.push(['IČO', data.ico + (data.dic ? ' / ' + data.dic : '')]);
     if (data.adresa)        rows.push(['Adresa', data.adresa]);
@@ -1843,7 +1834,6 @@ function merkNacistDetail(ico, nazev) {
     }
     document.getElementById('ai-vysledek').innerHTML = html || '<div style="color:#64748b;">Žádná data.</div>';
     document.getElementById('btn-ulozit-ai').style.display = 'inline-block';
-    document.getElementById('prepsat-label').style.display = 'flex';
   }).catch(function(e) {
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('ai-vysledek').style.display = 'block';
@@ -1852,26 +1842,26 @@ function merkNacistDetail(ico, nazev) {
 }
 
 function ulozitAIData() {
-  if (!aiData) return;
+  if (!_merkAiData) return;
   var btn = document.getElementById('btn-ulozit-ai');
   btn.disabled = true; btn.textContent = 'Ukládám...';
   var kid = document.getElementById('klient-meta').dataset.id;
   var prepsat = document.getElementById('prepsat-data').checked || false;
   fetch('/api/klient/' + kid + '/merk/ulozit', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(Object.assign({}, aiData, {prepsat_existujici: prepsat}))
+    body: JSON.stringify(Object.assign({}, _merkAiData, {prepsat_existujici: prepsat}))
   }).then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.ok) {
         var msg = '';
-        if (d.ulozeno && d.ulozeno.length)     msg += '✓ Doplněno: ' + d.ulozeno.join(', ') + '.\n';
-        if (d.preskoceno && d.preskoceno.length) msg += '⏭ Přeskočeno (již vyplněno): ' + d.preskoceno.join(', ') + '.';
-        btn.textContent = '✓ Uloženo';
+        if (d.ulozeno && d.ulozeno.length)       msg += 'Doplneno: ' + d.ulozeno.join(', ') + '.\n';
+        if (d.preskoceno && d.preskoceno.length) msg += 'Preskoceno: ' + d.preskoceno.join(', ');
+        btn.textContent = 'Ulozeno';
         if (msg) alert(msg);
-        setTimeout(function(){ location.reload(); }, msg ? 1500 : 700);
+        setTimeout(function() { location.reload(); }, msg ? 1500 : 700);
       } else {
-        btn.disabled = false; btn.textContent = '💾 Uložit do profilu';
-        alert('Chyba: ' + (d.error||''));
+        btn.disabled = false; btn.textContent = 'Ulozit do profilu';
+        alert('Chyba: ' + (d.error || ''));
       }
     });
 }
@@ -1883,7 +1873,7 @@ function zavritAIPanel() {
 }
 
 document.addEventListener('click', function(e) {
-  if (!e.target.closest('#merk-search-dd') && !e.target.closest('#merk-search-inp')) {
+  if (e.target.id !== 'merk-search-inp' && !e.target.closest('#merk-search-dd')) {
     var dd = document.getElementById('merk-search-dd');
     if (dd) dd.style.display = 'none';
   }
