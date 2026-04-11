@@ -316,3 +316,60 @@ def projekt_detail(projekt_id):
 # ─────────────────────────────────────────────
 # ROUTES — ZAPISY
 # ─────────────────────────────────────────────
+
+
+# ── Merk API pro klienty ─────────────────────────────────────
+
+@bp.route("/<int:id>/merk/suggest")
+@login_required
+def merk_suggest(id):
+    import requests as req
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify([])
+    key = os.environ.get("MERK_API_KEY", "")
+    try:
+        resp = req.get("https://api.merk.cz/suggest/",
+                       params={"name": q, "country_code": "cz", "limit": 8, "only_active": True},
+                       headers={"Authorization": f"Token {key}"}, timeout=5)
+        data = resp.json()
+        return jsonify(data if isinstance(data, list) else [])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@bp.route("/<int:id>/merk/ico/<ico>")
+@login_required
+def merk_ico(id, ico):
+    import requests as req
+    key = os.environ.get("MERK_API_KEY", "")
+    try:
+        resp = req.get("https://api.merk.cz/company/",
+                       params={"regno": ico, "country_code": "cz"},
+                       headers={"Authorization": f"Token {key}"}, timeout=5)
+        return jsonify(resp.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@bp.route("/<int:id>/merk/ulozit", methods=["POST"])
+@login_required
+def merk_ulozit(id):
+    k = Klient.query.get_or_404(id)
+    data = request.json or {}
+    prepsat = data.get("prepsat_existujici", False)
+
+    def set_if_empty(attr, val):
+        if val and (not getattr(k, attr, "") or prepsat):
+            setattr(k, attr, val)
+
+    set_if_empty("nazev",   data.get("nazev", ""))
+    set_if_empty("ic",      data.get("ic", ""))
+    set_if_empty("dic",     data.get("dic", ""))
+    set_if_empty("adresa",  data.get("adresa", ""))
+    set_if_empty("sidlo",   data.get("sidlo", ""))
+    set_if_empty("kontakt", data.get("kontakt_jmeno", ""))
+    set_if_empty("email",   data.get("kontakt_email", ""))
+    set_if_empty("telefon", data.get("kontakt_tel", ""))
+    set_if_empty("logo_url", data.get("logo_url", ""))
+
+    db.session.commit()
+    return jsonify({"ok": True})
