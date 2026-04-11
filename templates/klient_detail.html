@@ -415,7 +415,6 @@
       </div>
     </div>
     <div class="kd-header-actions">
-      <button id="btn-merk" onclick="spustitMerkKlient()" class="btn-hdr" style="background:rgba(6,182,212,.2);color:#06b6d4;border:1px solid #06b6d4;cursor:pointer;">🔍 Dohledat Merk</button>
       <a href="{{ url_for('zapisy.novy_zapis') }}?klient_id={{ k.id }}" class="btn-hdr cyan">+ Nový zápis</a>
       <a href="{{ url_for('nabidky.nabidka_nova') }}?klient_id={{ k.id }}" class="btn-hdr orange">+ Nabídka</a>
     </div>
@@ -558,6 +557,8 @@
       <div class="kd-card">
         <div class="kd-card-head">
           <h2>Informace</h2>
+          <div style="display:flex;gap:8px;">
+          <button onclick="spustitMerkKlient()" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:5px 12px;border-radius:5px;border:1.5px solid #06b6d4;color:#06b6d4;background:none;cursor:pointer;">🔍 Merk</button>
           <button onclick="toggleEdit()" class="btn btn-secondary btn-sm" id="edit-btn">✎ Upravit</button>
         </div>
         <div class="kd-card-body">
