@@ -541,3 +541,32 @@ def klient_merk_ulozit(klient_id):
 
     db.session.commit()
     return jsonify({"ok": True})
+
+# ── Diagnostika Merk API ─────────────────────────────────────────
+@bp.route("/api/klient/merk/diagnostika")
+@login_required
+def klient_merk_diagnostika():
+    """Testovací endpoint — zobrazí stav Merk API."""
+    import os
+    key = os.environ.get("MERK_API_KEY", "")
+    vysledky = {
+        "klic_nastaven": bool(key),
+        "klic_delka": len(key),
+        "klic_prvni_znaky": key[:8] + "..." if key else "CHYBI",
+    }
+    # Test suggest
+    try:
+        r = _merk_get("/suggest/", {"name": "BITO", "country_code": "cz", "limit": 2})
+        vysledky["suggest_status"] = r.status_code
+        vysledky["suggest_ok"] = r.status_code == 200
+        if r.status_code == 200:
+            items = r.json()
+            vysledky["suggest_pocet"] = len(items) if isinstance(items, list) else "neni list"
+        else:
+            vysledky["suggest_text"] = r.text[:200]
+    except Exception as e:
+        vysledky["suggest_chyba"] = str(e)
+
+    html = "<h2>Merk API Diagnostika</h2><pre>" + "\n".join(f"{k}: {v}" for k,v in vysledky.items()) + "</pre>"
+    html += '<p><a href="javascript:history.back()">← Zpět</a></p>'
+    return html
