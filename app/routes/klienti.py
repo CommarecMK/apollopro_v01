@@ -320,9 +320,9 @@ def projekt_detail(projekt_id):
 
 # ── Merk API pro klienty ─────────────────────────────────────
 
-@bp.route("/<int:id>/merk/suggest")
+@bp.route("/api/klient/<int:klient_id>/merk/suggest")
 @login_required
-def merk_suggest(id):
+def merk_suggest(klient_id):
     import requests as req
     q = request.args.get("q", "").strip()
     if not q:
@@ -337,9 +337,9 @@ def merk_suggest(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@bp.route("/<int:id>/merk/ico/<ico>")
+@bp.route("/api/klient/<int:klient_id>/merk/ico/<ico>")
 @login_required
-def merk_ico(id, ico):
+def merk_ico(klient_id, ico):
     import requests as req
     key = os.environ.get("MERK_API_KEY", "")
     try:
@@ -350,10 +350,10 @@ def merk_ico(id, ico):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@bp.route("/<int:id>/merk/ulozit", methods=["POST"])
+@bp.route("/api/klient/<int:klient_id>/merk/ulozit", methods=["POST"])
 @login_required
-def merk_ulozit(id):
-    k = Klient.query.get_or_404(id)
+def merk_ulozit(klient_id):
+    k = Klient.query.get_or_404(klient_id)
     data = request.json or {}
     prepsat = data.get("prepsat_existujici", False)
 

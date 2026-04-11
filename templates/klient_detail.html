@@ -1739,7 +1739,7 @@ function merkSuggest(q) {
   clearTimeout(merkTimer);
   if (q.length < 2) { document.getElementById('merk-suggest').style.display = 'none'; return; }
   merkTimer = setTimeout(() => {
-    fetch(`/klienti/${KID}/merk/suggest?q=${encodeURIComponent(q)}`)
+    fetch(`/api/klient/${KID}/merk/suggest?q=${encodeURIComponent(q)}`)
       .then(r => r.json()).then(data => {
         const el = document.getElementById('merk-suggest');
         if (!Array.isArray(data) || !data.length) { el.style.display = 'none'; return; }
@@ -1759,7 +1759,7 @@ function vybratFirmu(ico) {
   document.getElementById('merk-suggest').style.display = 'none';
   document.getElementById('merk-loading').style.display = 'block';
   document.getElementById('merk-vysledek').style.display = 'none';
-  fetch(`/klienti/${KID}/merk/ico/${ico}`)
+  fetch(`/api/klient/${KID}/merk/ico/${ico}`)
     .then(r => r.json()).then(zobrazitMerkData);
 }
 
@@ -1769,7 +1769,7 @@ function merkHledat() {
   document.getElementById('merk-loading').style.display = 'block';
   document.getElementById('merk-vysledek').style.display = 'none';
   document.getElementById('merk-suggest').style.display = 'none';
-  fetch(`/klienti/${KID}/merk/suggest?q=${encodeURIComponent(q)}`)
+  fetch(`/api/klient/${KID}/merk/suggest?q=${encodeURIComponent(q)}`)
     .then(r => r.json()).then(data => {
       if (Array.isArray(data) && data.length) vybratFirmu(data[0].regno || '');
       else { document.getElementById('merk-loading').style.display = 'none'; alert('Firma nenalezena.'); }
@@ -1815,7 +1815,7 @@ function ulozitMerk() {
   const btn = document.getElementById('btn-ulozit-merk');
   btn.disabled = true; btn.textContent = 'Ukládám...';
   const prepsat = document.getElementById('prepsat-data').checked;
-  fetch(`/klienti/${KID}/merk/ulozit`, {
+  fetch(`/api/klient/${KID}/merk/ulozit`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(Object.assign({}, merkData, {prepsat_existujici: prepsat}))
