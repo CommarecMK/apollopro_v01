@@ -420,35 +420,6 @@
     </div>
   </div>
 
-  <div id="klient-meta" data-id="{{ k.id }}" data-nazev="{{ k.nazev }}" style="display:none;"></div>
-
-  <div id="ai-panel" style="display:none;max-width:900px;margin:0 auto 20px;">
-    <div style="background:#fff;border:2px solid #06b6d4;border-radius:12px;padding:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="font-weight:700;font-size:15px;color:#0e2a4a;">🔍 Dohledat v Merku</div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <label style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:5px;" id="prepsat-label">
-            <input type="checkbox" id="prepsat-data"> Přepsat existující
-          </label>
-          <button style="display:none;background:#0e2a4a;color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;" id="btn-ulozit-ai" onclick="ulozitAIData()">💾 Uložit do profilu</button>
-          <button onclick="zavritAIPanel()" style="background:none;border:1px solid #e2e8f0;padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;">✕ Zavřít</button>
-        </div>
-      </div>
-      <div style="margin-bottom:12px;position:relative;">
-        <div style="display:flex;gap:8px;">
-          <input type="text" id="merk-search-inp" placeholder="Upřesni název nebo zadej IČO…"
-                 style="flex:1;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;" autocomplete="off"
-                 onkeydown="if(event.key==='Enter') merkHledat()"
-                 oninput="merkSuggestPanel(this.value)">
-          <button onclick="merkHledat()" style="background:#e2e8f0;border:none;padding:9px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">Hledat</button>
-        </div>
-        <div id="merk-search-dd" style="display:none;position:absolute;z-index:200;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);width:100%;top:44px;left:0;max-height:260px;overflow-y:auto;"></div>
-      </div>
-      <div id="ai-loading" style="display:none;text-align:center;padding:16px;color:#64748b;font-size:13px;">⏳ Načítám data z Merku…</div>
-      <div id="ai-vysledek" style="display:none;"></div>
-    </div>
-  </div>
-
   <!-- STATS -->
   <div class="kd-stats">
     <div class="kd-stat">
@@ -557,8 +528,6 @@
       <div class="kd-card">
         <div class="kd-card-head">
           <h2>Informace</h2>
-          <div style="display:flex;gap:8px;">
-          <button onclick="spustitMerkKlient()" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:5px 12px;border-radius:5px;border:1.5px solid #06b6d4;color:#06b6d4;background:none;cursor:pointer;">🔍 Merk</button>
           <button onclick="toggleEdit()" class="btn btn-secondary btn-sm" id="edit-btn">✎ Upravit</button>
         </div>
         <div class="kd-card-body">
@@ -1731,152 +1700,5 @@ async function uploadLogo(input) {
   }
   input.value = '';
 }
-
-// ── Merk ─────────────────────────────────────────────────────────────
-try {
-var _merkAiData = null;
-var _merkSuggestTimer = null;
-var _merkSuggestItems = [];
-
-window.spustitMerkKlient = function() {
-  var btn = document.getElementById('btn-merk');
-  if (btn) { btn.disabled = true; btn.textContent = 'Hledám...'; }
-  document.getElementById('ai-panel').style.display = 'block';
-  document.getElementById('ai-panel').scrollIntoView({behavior:'smooth', block:'start'});
-  var nazev = document.getElementById('klient-meta').dataset.nazev;
-  document.getElementById('merk-search-inp').value = nazev;
-  _merkNacistDetail(null, nazev).then(function() {
-    if (btn) { btn.disabled = false; btn.textContent = '🔍 Dohledat Merk'; }
-  });
-};
-
-window.merkSuggestPanel = function(q) {
-  clearTimeout(_merkSuggestTimer);
-  var dd = document.getElementById('merk-search-dd');
-  if (q.length < 2) { dd.style.display = 'none'; return; }
-  _merkSuggestTimer = setTimeout(function() { _merkSuggest(q); }, 300);
-};
-
-function _merkSuggest(q) {
-  var dd = document.getElementById('merk-search-dd');
-  fetch('/api/klient/merk/suggest?q=' + encodeURIComponent(q))
-    .then(function(r) { return r.json(); })
-    .then(function(items) {
-      _merkSuggestItems = Array.isArray(items) ? items : [];
-      if (!_merkSuggestItems.length) { dd.style.display = 'none'; return; }
-      var html = '';
-      for (var i = 0; i < _merkSuggestItems.length; i++) {
-        var it = _merkSuggestItems[i];
-        html += '<div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #e2e8f0;font-size:13px;" onclick="_merkVybratFirmu(' + i + ')" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">'
-              + '<div style="font-weight:600;">' + (it.nazev || '') + '</div>'
-              + '<div style="font-size:11px;color:#64748b;">ICO: ' + (it.ico || '') + ' · ' + (it.adresa || '') + '</div>'
-              + '</div>';
-      }
-      dd.innerHTML = html; dd.style.display = 'block';
-    }).catch(function() { document.getElementById('merk-search-dd').style.display = 'none'; });
-}
-
-window._merkVybratFirmu = function(idx) {
-  document.getElementById('merk-search-dd').style.display = 'none';
-  var it = _merkSuggestItems[idx];
-  if (!it) return;
-  document.getElementById('merk-search-inp').value = it.nazev;
-  _merkNacistDetail(it.ico || null, it.nazev);
-};
-
-window.merkHledat = function() {
-  document.getElementById('merk-search-dd').style.display = 'none';
-  var q = document.getElementById('merk-search-inp').value.trim();
-  if (!q) return;
-  _merkNacistDetail(/^[0-9]{6,9}$/.test(q) ? q : null, q);
-};
-
-function _merkNacistDetail(ico, nazev) {
-  document.getElementById('ai-loading').style.display = 'block';
-  document.getElementById('ai-vysledek').style.display = 'none';
-  document.getElementById('btn-ulozit-ai').style.display = 'none';
-  var kid = document.getElementById('klient-meta').dataset.id;
-  var promise;
-  if (ico) {
-    promise = fetch('/api/klient/merk/ico/' + ico).then(function(r) { return r.json(); });
-  } else {
-    promise = fetch('/api/klient/' + kid + '/merk/dohledat', {method:'POST'})
-      .then(function(r) { return r.json(); })
-      .then(function(resp) {
-        if (resp.ok) return Object.assign({ok:true}, resp.data);
-        return resp;
-      });
-  }
-  return promise.then(function(data) {
-    document.getElementById('ai-loading').style.display = 'none';
-    document.getElementById('ai-vysledek').style.display = 'block';
-    if (!data.ok) {
-      document.getElementById('ai-vysledek').innerHTML = '<div style="color:#ef4444;font-size:13px;padding:8px 0;">' + (data.error || 'Firma nenalezena.') + '</div>';
-      return;
-    }
-    _merkAiData = data;
-    var rows = [];
-    if (data.ico)           rows.push(['ICO', data.ico + (data.dic ? ' / ' + data.dic : '')]);
-    if (data.adresa)        rows.push(['Adresa', data.adresa]);
-    if (data.web)           rows.push(['Web', '<a href="' + data.web + '" target="_blank" style="color:#06b6d4;">' + data.web + '</a>']);
-    if (data.kontakt_jmeno) rows.push(['Kontakt', data.kontakt_jmeno]);
-    if (data.kontakt_email) rows.push(['Email', '<a href="mailto:' + data.kontakt_email + '" style="color:#06b6d4;">' + data.kontakt_email + '</a>']);
-    if (data.kontakt_tel)   rows.push(['Telefon', data.kontakt_tel]);
-    if (data.obor)          rows.push(['Obor', data.obor]);
-    if (data.zamestnanci)   rows.push(['Zamestnanci', data.zamestnanci]);
-    if (data.obrat)         rows.push(['Obrat', data.obrat]);
-    var html = '';
-    for (var i = 0; i < rows.length; i++) {
-      html += '<div style="display:flex;gap:12px;padding:7px 0;border-bottom:1px solid #e2e8f0;font-size:13px;">'
-            + '<span style="color:#64748b;width:100px;flex-shrink:0;">' + rows[i][0] + '</span>'
-            + '<span style="flex:1;font-weight:500;">' + rows[i][1] + '</span></div>';
-    }
-    document.getElementById('ai-vysledek').innerHTML = html || '<div style="color:#64748b;">Zadna data.</div>';
-    document.getElementById('btn-ulozit-ai').style.display = 'inline-block';
-  }).catch(function(e) {
-    document.getElementById('ai-loading').style.display = 'none';
-    document.getElementById('ai-vysledek').style.display = 'block';
-    document.getElementById('ai-vysledek').innerHTML = '<div style="color:#ef4444;">Chyba: ' + e + '</div>';
-  });
-}
-
-window.ulozitAIData = function() {
-  if (!_merkAiData) return;
-  var btn = document.getElementById('btn-ulozit-ai');
-  btn.disabled = true; btn.textContent = 'Ukladam...';
-  var kid = document.getElementById('klient-meta').dataset.id;
-  var prepsat = document.getElementById('prepsat-data').checked || false;
-  fetch('/api/klient/' + kid + '/merk/ulozit', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(Object.assign({}, _merkAiData, {prepsat_existujici: prepsat}))
-  }).then(function(r) { return r.json(); })
-    .then(function(d) {
-      if (d.ok) {
-        var msg = '';
-        if (d.ulozeno && d.ulozeno.length) msg += 'Doplneno: ' + d.ulozeno.join(', ');
-        if (d.preskoceno && d.preskoceno.length) msg += (msg?'\n':'') + 'Preskoceno: ' + d.preskoceno.join(', ');
-        btn.textContent = 'Ulozeno';
-        if (msg) alert(msg);
-        setTimeout(function() { location.reload(); }, msg ? 1500 : 700);
-      } else { btn.disabled = false; btn.textContent = 'Ulozit'; alert('Chyba: ' + (d.error||'')); }
-    });
-};
-
-window.zavritAIPanel = function() {
-  document.getElementById('ai-panel').style.display = 'none';
-  var dd = document.getElementById('merk-search-dd');
-  if (dd) dd.style.display = 'none';
-};
-
-document.addEventListener('click', function(e) {
-  if (e.target.id !== 'merk-search-inp' && !e.target.closest('#merk-search-dd')) {
-    var dd = document.getElementById('merk-search-dd');
-    if (dd) dd.style.display = 'none';
-  }
-});
-
-console.log('[Merk] JS loaded OK, KLIENT_ID=' + KLIENT_ID);
-} catch(e) { console.error('[Merk] JS init error:', e); }
-
 </script>
 {% endblock %}
