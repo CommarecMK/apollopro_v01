@@ -415,25 +415,26 @@
       </div>
     </div>
     <div class="kd-header-actions">
-      <button id="btn-merk-hdr" onclick="spustitMerkPanel()" class="btn-hdr" style="background:rgba(6,182,212,.2);color:#06b6d4;">🔍 Dohledat Merk</button>
+      <button id="btn-merk-hdr" onclick="document.getElementById('ai-panel').dataset.autoopen='1';document.getElementById('ai-panel').style.display='block'" class="btn-hdr" style="background:rgba(6,182,212,.2);color:#06b6d4;">🔍 Dohledat Merk</button>
+      <button id="btn-merk" onclick="spustitMerkKlient()" class="btn-hdr" style="background:rgba(6,182,212,.2);color:#06b6d4;border:1px solid #06b6d4;cursor:pointer;">🔍 Dohledat Merk</button>
       <a href="{{ url_for('zapisy.novy_zapis') }}?klient_id={{ k.id }}" class="btn-hdr cyan">+ Nový zápis</a>
       <a href="{{ url_for('nabidky.nabidka_nova') }}?klient_id={{ k.id }}" class="btn-hdr orange">+ Nabídka</a>
     </div>
   </div>
 
-  <!-- data pro JS -->
+  <!-- klient meta pro JS -->
   <div id="klient-meta" data-id="{{ k.id }}" data-nazev="{{ k.nazev }}" style="display:none;"></div>
 
-  <!-- Merk panel (identický s dodavatelem) -->
+  <!-- Merk panel — přesná kopie z LOE dodavatele -->
   <div id="ai-panel" style="display:none;max-width:900px;margin:0 auto 20px;">
     <div style="background:#fff;border:2px solid #06b6d4;border-radius:12px;padding:20px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
         <div style="font-weight:700;font-size:15px;color:#0e2a4a;">🔍 Dohledat v Merku</div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <label id="prepsat-label" style="font-size:12px;color:#64748b;display:none;align-items:center;gap:5px;">
+          <label style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:5px;" id="prepsat-label">
             <input type="checkbox" id="prepsat-data"> Přepsat existující
           </label>
-          <button id="btn-ulozit-ai" style="display:none;background:#0e2a4a;color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;" onclick="ulozitAIData()">💾 Uložit do profilu</button>
+          <button style="display:none;background:#0e2a4a;color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;" id="btn-ulozit-ai" onclick="ulozitAIData()">💾 Uložit do profilu</button>
           <button onclick="zavritAIPanel()" style="background:none;border:1px solid #e2e8f0;padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;">✕ Zavřít</button>
         </div>
       </div>
@@ -1733,21 +1734,20 @@ async function uploadLogo(input) {
   input.value = '';
 }
 
-// ── Merk (identický s dodavatelem) ───────────────────────────
-// KLIENT_ID je již definováno výše (řádek 899)
-const KLIENT_NAZEV = document.getElementById('klient-meta').dataset.nazev;
+// ── Merk — přesná kopie z LOE dodavatele ─────────────────────────
 var aiData = null;
 var suggestTimer = null;
 var suggestItems = [];
 
-function spustitMerkPanel() {
-  var btn = document.getElementById('btn-merk-hdr');
-  if (btn) { btn.disabled = true; btn.textContent = 'Hledám...'; }
+function spustitMerkKlient() {
+  var btn = document.getElementById('btn-merk');
+  btn.disabled = true; btn.textContent = 'Hledám...';
   document.getElementById('ai-panel').style.display = 'block';
   document.getElementById('ai-panel').scrollIntoView({behavior:'smooth', block:'start'});
-  document.getElementById('merk-search-inp').value = KLIENT_NAZEV;
-  merkNacistDetail(null, KLIENT_NAZEV).then(function() {
-    if (btn) { btn.disabled = false; btn.textContent = '🔍 Dohledat Merk'; }
+  var nazev = document.getElementById('klient-meta').dataset.nazev;
+  document.getElementById('merk-search-inp').value = nazev;
+  merkNacistDetail(null, nazev).then(function() {
+    btn.disabled = false; btn.textContent = '🔍 Dohledat Merk';
   });
 }
 
@@ -1760,17 +1760,17 @@ function merkSuggestPanel(q) {
 
 function _suggest(q) {
   var dd = document.getElementById('merk-search-dd');
-  fetch('/api/klient/' + KLIENT_ID + '/merk/suggest?q=' + encodeURIComponent(q))
+  fetch('/api/klient/merk/suggest?q=' + encodeURIComponent(q))
     .then(function(r) { return r.json(); })
     .then(function(items) {
-      suggestItems = Array.isArray(items) ? items : [];
-      if (!suggestItems.length) { dd.style.display = 'none'; return; }
+      suggestItems = items;
+      if (!Array.isArray(items) || !items.length) { dd.style.display = 'none'; return; }
       var html = '';
-      for (var i = 0; i < suggestItems.length; i++) {
-        var it = suggestItems[i];
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
         html += '<div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #e2e8f0;font-size:13px;" onclick="vybratFirmu(' + i + ')" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">'
-              + '<div style="font-weight:600;">' + (it.name || '') + '</div>'
-              + '<div style="font-size:11px;color:#64748b;">IČO: ' + (it.regno || '') + ' · ' + (it.city || '') + '</div>'
+              + '<div style="font-weight:600;">' + (it.nazev || '') + '</div>'
+              + '<div style="font-size:11px;color:#64748b;">IČO: ' + (it.ico || '') + ' · ' + (it.adresa || '') + '</div>'
               + '</div>';
       }
       dd.innerHTML = html;
@@ -1782,18 +1782,18 @@ function vybratFirmu(idx) {
   document.getElementById('merk-search-dd').style.display = 'none';
   var it = suggestItems[idx];
   if (!it) return;
-  document.getElementById('merk-search-inp').value = it.name;
-  merkNacistDetail(it.regno || null, it.name);
+  document.getElementById('merk-search-inp').value = it.nazev;
+  merkNacistDetail(it.ico || null, it.nazev);
 }
 
 function merkHledat() {
   document.getElementById('merk-search-dd').style.display = 'none';
   var q = document.getElementById('merk-search-inp').value.trim();
-  if (!q) return Promise.resolve();
-  if (/^\d{6,9}$/.test(q)) {
-    return merkNacistDetail(q, null);
+  if (!q) return;
+  if (/^[0-9]{6,9}$/.test(q)) {
+    merkNacistDetail(q, null);
   } else {
-    return merkNacistDetail(null, q);
+    merkNacistDetail(null, q);
   }
 }
 
@@ -1802,17 +1802,16 @@ function merkNacistDetail(ico, nazev) {
   document.getElementById('ai-vysledek').style.display = 'none';
   document.getElementById('btn-ulozit-ai').style.display = 'none';
 
+  var kid = document.getElementById('klient-meta').dataset.id;
   var promise;
   if (ico) {
-    promise = fetch('/api/klient/' + KLIENT_ID + '/merk/ico/' + ico).then(function(r) { return r.json(); });
+    promise = fetch('/api/klient/merk/ico/' + ico).then(function(r) { return r.json(); });
   } else {
-    promise = fetch('/api/klient/' + KLIENT_ID + '/merk/suggest?q=' + encodeURIComponent(nazev || ''))
+    promise = fetch('/api/klient/' + kid + '/merk/dohledat', {method:'POST'})
       .then(function(r) { return r.json(); })
-      .then(function(items) {
-        if (Array.isArray(items) && items.length) {
-          return fetch('/api/klient/' + KLIENT_ID + '/merk/ico/' + items[0].regno).then(function(r) { return r.json(); });
-        }
-        return {ok: false, error: 'Firma nenalezena v Merku.'};
+      .then(function(resp) {
+        if (resp.ok) { return Object.assign({ok:true}, resp.data); }
+        return resp;
       });
   }
 
@@ -1820,36 +1819,26 @@ function merkNacistDetail(ico, nazev) {
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('ai-vysledek').style.display = 'block';
 
-    if (data.error && !data.name) {
+    if (!data.ok) {
       document.getElementById('ai-vysledek').innerHTML =
         '<div style="color:#ef4444;font-size:13px;padding:8px 0;">' + (data.error || 'Firma nenalezena.') + '</div>';
       return;
     }
-    aiData = {
-      nazev: data.name || '',
-      ic: data.regno || '',
-      dic: data.vat_number || '',
-      adresa: [data.street, data.city, data.zip].filter(Boolean).join(', '),
-      sidlo: [data.street, data.city, data.zip].filter(Boolean).join(', '),
-      kontakt_jmeno: (data.contacts && data.contacts[0]) ? data.contacts[0].name || '' : '',
-      kontakt_email: (data.contacts && data.contacts[0]) ? data.contacts[0].email || '' : '',
-      kontakt_tel: (data.contacts && data.contacts[0]) ? data.contacts[0].phone || '' : '',
-      logo_url: data.logo_url || '',
-    };
+    aiData = data;
     var rows = [];
-    if (data.regno)          rows.push(['IČO / DIČ', data.regno + (data.vat_number ? ' / ' + data.vat_number : '')]);
-    if (aiData.adresa)       rows.push(['Adresa', aiData.adresa]);
-    if (data.www)            rows.push(['Web', '<a href="' + data.www + '" target="_blank" style="color:#06b6d4;">' + data.www + '</a>']);
-    if (aiData.kontakt_jmeno) rows.push(['Kontakt', aiData.kontakt_jmeno]);
-    if (aiData.kontakt_email) rows.push(['Email', '<a href="mailto:' + aiData.kontakt_email + '" style="color:#06b6d4;">' + aiData.kontakt_email + '</a>']);
-    if (aiData.kontakt_tel)  rows.push(['Telefon', aiData.kontakt_tel]);
-    if (data.nace_description) rows.push(['Obor', data.nace_description]);
-    if (data.employees)      rows.push(['Zaměstnanci', data.employees]);
-    if (data.turnover)       rows.push(['Obrat', data.turnover]);
+    if (data.ico)           rows.push(['IČO', data.ico + (data.dic ? ' / ' + data.dic : '')]);
+    if (data.adresa)        rows.push(['Adresa', data.adresa]);
+    if (data.web)           rows.push(['Web', '<a href="' + data.web + '" target="_blank" style="color:#06b6d4;">' + data.web + '</a>']);
+    if (data.kontakt_jmeno) rows.push(['Kontakt', data.kontakt_jmeno]);
+    if (data.kontakt_email) rows.push(['Email', '<a href="mailto:' + data.kontakt_email + '" style="color:#06b6d4;">' + data.kontakt_email + '</a>']);
+    if (data.kontakt_tel)   rows.push(['Telefon', data.kontakt_tel]);
+    if (data.obor)          rows.push(['Obor', data.obor]);
+    if (data.zamestnanci)   rows.push(['Zaměstnanci', data.zamestnanci]);
+    if (data.obrat)         rows.push(['Obrat', data.obrat]);
     var html = '';
     for (var i = 0; i < rows.length; i++) {
       html += '<div style="display:flex;gap:12px;padding:7px 0;border-bottom:1px solid #e2e8f0;font-size:13px;">'
-            + '<span style="color:#64748b;width:110px;flex-shrink:0;">' + rows[i][0] + '</span>'
+            + '<span style="color:#64748b;width:100px;flex-shrink:0;">' + rows[i][0] + '</span>'
             + '<span style="flex:1;font-weight:500;">' + rows[i][1] + '</span></div>';
     }
     document.getElementById('ai-vysledek').innerHTML = html || '<div style="color:#64748b;">Žádná data.</div>';
@@ -1866,14 +1855,24 @@ function ulozitAIData() {
   if (!aiData) return;
   var btn = document.getElementById('btn-ulozit-ai');
   btn.disabled = true; btn.textContent = 'Ukládám...';
+  var kid = document.getElementById('klient-meta').dataset.id;
   var prepsat = document.getElementById('prepsat-data').checked || false;
-  fetch('/api/klient/' + KLIENT_ID + '/merk/ulozit', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
+  fetch('/api/klient/' + kid + '/merk/ulozit', {
+    method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify(Object.assign({}, aiData, {prepsat_existujici: prepsat}))
   }).then(function(r) { return r.json(); })
     .then(function(d) {
-      if (d.ok) { btn.textContent = '✓ Uloženo'; setTimeout(function() { location.reload(); }, 700); }
-      else { btn.disabled = false; btn.textContent = '💾 Uložit do profilu'; alert('Chyba: ' + (d.error || '')); }
+      if (d.ok) {
+        var msg = '';
+        if (d.ulozeno && d.ulozeno.length)     msg += '✓ Doplněno: ' + d.ulozeno.join(', ') + '.\n';
+        if (d.preskoceno && d.preskoceno.length) msg += '⏭ Přeskočeno (již vyplněno): ' + d.preskoceno.join(', ') + '.';
+        btn.textContent = '✓ Uloženo';
+        if (msg) alert(msg);
+        setTimeout(function(){ location.reload(); }, msg ? 1500 : 700);
+      } else {
+        btn.disabled = false; btn.textContent = '💾 Uložit do profilu';
+        alert('Chyba: ' + (d.error||''));
+      }
     });
 }
 
@@ -1882,5 +1881,13 @@ function zavritAIPanel() {
   var dd = document.getElementById('merk-search-dd');
   if (dd) dd.style.display = 'none';
 }
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#merk-search-dd') && !e.target.closest('#merk-search-inp')) {
+    var dd = document.getElementById('merk-search-dd');
+    if (dd) dd.style.display = 'none';
+  }
+});
+
 </script>
 {% endblock %}
